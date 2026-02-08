@@ -1,8 +1,8 @@
-package passwords
+package auth
 
 import "github.com/alexedwards/argon2id"
 
-func Hash(password string) (string, error) {
+func HashPassword(password string) (string, error) {
 	hash, err := argon2id.CreateHash(password, argon2id.DefaultParams)
 	if err != nil {
 		return "", err
@@ -10,10 +10,10 @@ func Hash(password string) (string, error) {
 	return string(hash), nil
 }
 
-func Compare(password string, hash string) (bool, error) {
+func ComparePasswordAndHash(password string, hash string) bool {
 	match, err := argon2id.ComparePasswordAndHash(password, hash)
 	if err != nil {
-		return false, err
+		return false
 	}
-	return match, nil
+	return match
 }
