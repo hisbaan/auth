@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"auth/httperrors"
+	"auth/apperror"
 	"encoding/json"
 	"net/http"
 
@@ -17,7 +17,7 @@ func parseBody(w http.ResponseWriter, r *http.Request, body any) {
 }
 
 func handleErrors(w http.ResponseWriter, err error) {
-	serr, ok := err.(httperrors.HTTPError)
+	serr, ok := err.(apperror.HTTPError)
 	if ok {
 		w.WriteHeader(serr.StatusCode())
 		w.Write([]byte(serr.Error()))

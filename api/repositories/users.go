@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"auth/httperrors"
+	"auth/apperror"
 	"auth/jet/postgres/public/model"
 	. "auth/jet/postgres/public/table"
 	"database/sql"
@@ -30,7 +30,7 @@ func (r *userRepository) GetByEmail(email string) (*model.Users, error) {
 	var users []model.Users
 	err := query.Query(r.db, &users)
 	if err != nil {
-		return nil, httperrors.NewInternalServerError("Database query error")
+		return nil, apperror.NewInternalServerError("Database query error")
 	}
 
 	if len(users) == 0 {
@@ -43,7 +43,7 @@ func (r *userRepository) GetByEmail(email string) (*model.Users, error) {
 func (r *userRepository) Create(user model.Users) error {
 	_, err := Users.INSERT().MODEL(user).ON_CONFLICT().DO_NOTHING().Exec(r.db)
 	if err != nil {
-		return httperrors.NewInternalServerError("Database query error")
+		return apperror.NewInternalServerError("Database query error")
 	}
 	return nil
 }

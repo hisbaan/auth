@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"auth/httperrors"
+	"auth/apperror"
 	"auth/internal/ulidutil"
 	"auth/jet/postgres/public/model"
 	"crypto/ed25519"
@@ -52,12 +52,12 @@ func (s *AuthService) Login(params LoginParams, ip string, userAgent string) (Lo
 	}
 
 	if user == nil {
-		return LoginResponse{}, httperrors.NewUnauthorized("Invalid credentials")
+		return LoginResponse{}, apperror.NewUnauthorized("Invalid credentials")
 	}
 
 	match := ComparePasswordAndHash(params.Password, user.PasswordHash)
 	if !match {
-		return LoginResponse{}, httperrors.NewUnauthorized("Invalid credentials")
+		return LoginResponse{}, apperror.NewUnauthorized("Invalid credentials")
 	}
 
 	accessToken, err := GenerateAccessToken(GenerateAccessTokenParams{
@@ -67,7 +67,7 @@ func (s *AuthService) Login(params LoginParams, ip string, userAgent string) (Lo
 		expiry:     s.accessTokenExpiry,
 	})
 	if err != nil {
-		return LoginResponse{}, httperrors.NewInternalServerError("Token generation error")
+		return LoginResponse{}, apperror.NewInternalServerError("Token generation error")
 	}
 
 	userID := ulidutil.MustFromBytes(user.ID)
@@ -94,7 +94,7 @@ func (s *AuthService) Login(params LoginParams, ip string, userAgent string) (Lo
 		expiry:     s.refreshTokenExpiry,
 	})
 	if err != nil {
-		return LoginResponse{}, httperrors.NewInternalServerError("Token generation error")
+		return LoginResponse{}, apperror.NewInternalServerError("Token generation error")
 	}
 
 	response := LoginResponse{
@@ -126,7 +126,7 @@ func (s *AuthService) Refresh(params RefreshParams, ip string, userAgent string)
 
 	tokenID, err := ulid.Parse(claims.ID)
 	if err != nil {
-		return RefreshResponse{}, httperrors.NewBadRequest("Invalid token ID format")
+		return RefreshResponse{}, apperror.NewBadRequest("Invalid token ID format")
 	}
 
 	refreshToken, err := s.refreshTokenRepo.GetByID(tokenID)
@@ -135,11 +135,11 @@ func (s *AuthService) Refresh(params RefreshParams, ip string, userAgent string)
 	}
 
 	if refreshToken == nil {
-		return RefreshResponse{}, httperrors.NewUnauthorized("Invalid token")
+		return RefreshResponse{}, apperror.NewUnauthorized("Invalid token")
 	}
 
 	if refreshToken.RevokedAt != nil {
-		return RefreshResponse{}, httperrors.NewUnauthorized("Invalid token")
+		return RefreshResponse{}, apperror.NewUnauthorized("Invalid token")
 	}
 
 	refreshTokenULID := ulidutil.MustFromBytes(refreshToken.ID)
@@ -155,7 +155,7 @@ func (s *AuthService) Refresh(params RefreshParams, ip string, userAgent string)
 		expiry:     s.accessTokenExpiry,
 	})
 	if err != nil {
-		return RefreshResponse{}, httperrors.NewInternalServerError("Token generation error")
+		return RefreshResponse{}, apperror.NewInternalServerError("Token generation error")
 	}
 
 	newRefreshTokenID := ulid.Make()
@@ -183,7 +183,7 @@ func (s *AuthService) Refresh(params RefreshParams, ip string, userAgent string)
 	})
 
 	if err != nil {
-		return RefreshResponse{}, httperrors.NewInternalServerError("Token generation error")
+		return RefreshResponse{}, apperror.NewInternalServerError("Token generation error")
 	}
 
 	return RefreshResponse{

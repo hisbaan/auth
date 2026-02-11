@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"auth/httperrors"
+	"auth/apperror"
 	"auth/jet/postgres/public/model"
 	. "auth/jet/postgres/public/table"
 	"database/sql"
@@ -33,7 +33,7 @@ func (r *refreshTokenRepository) GetByID(id ulid.ULID) (*model.RefreshTokens, er
 	var tokens []model.RefreshTokens
 	err := query.Query(r.db, &tokens)
 	if err != nil {
-		return nil, httperrors.NewInternalServerError("Database query error")
+		return nil, apperror.NewInternalServerError("Database query error")
 	}
 
 	if len(tokens) == 0 {
@@ -49,7 +49,7 @@ func (r *refreshTokenRepository) Revoke(id ulid.ULID) error {
 		WHERE(RefreshTokens.ID.EQ(Bytea(id.Bytes()))).
 		Exec(r.db)
 	if err != nil {
-		return httperrors.NewInternalServerError("Database query error")
+		return apperror.NewInternalServerError("Database query error")
 	}
 	return nil
 }
@@ -57,7 +57,7 @@ func (r *refreshTokenRepository) Revoke(id ulid.ULID) error {
 func (r *refreshTokenRepository) Create(token model.RefreshTokens) error {
 	_, err := RefreshTokens.INSERT().MODEL(token).Exec(r.db)
 	if err != nil {
-		return httperrors.NewInternalServerError("Database query error")
+		return apperror.NewInternalServerError("Database query error")
 	}
 	return nil
 }

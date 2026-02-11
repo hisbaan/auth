@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"auth/httperrors"
+	"auth/apperror"
 	"crypto/ed25519"
 	"time"
 
@@ -10,10 +10,10 @@ import (
 )
 
 type GenerateAccessTokenParams struct {
-	privateKey        ed25519.PrivateKey
-	issuer            string
-	userID            ulid.ULID
-	expiry time.Duration
+	privateKey ed25519.PrivateKey
+	issuer     string
+	userID     ulid.ULID
+	expiry     time.Duration
 }
 
 func GenerateAccessToken(params GenerateAccessTokenParams) (string, error) {
@@ -29,11 +29,11 @@ func GenerateAccessToken(params GenerateAccessTokenParams) (string, error) {
 }
 
 type GenerateRefreshTokenParams struct {
-	privateKey         ed25519.PrivateKey
-	issuer             string
-	userID             ulid.ULID
-	tokenID            ulid.ULID
-	expiry time.Duration
+	privateKey ed25519.PrivateKey
+	issuer     string
+	userID     ulid.ULID
+	tokenID    ulid.ULID
+	expiry     time.Duration
 }
 
 func GenerateRefreshToken(params GenerateRefreshTokenParams) (string, error) {
@@ -53,12 +53,12 @@ func ValidateToken(publicKey ed25519.PublicKey, token string) (*jwt.Token, *jwt.
 	claims := &jwt.RegisteredClaims{}
 	verifiedToken, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodEd25519); !ok {
-			return nil, httperrors.NewUnauthorized("Invalid token")
+			return nil, apperror.NewUnauthorized("Invalid token")
 		}
 		return publicKey, nil
 	})
 	if err != nil || !verifiedToken.Valid {
-		return nil, nil, httperrors.NewUnauthorized("Invalid token")
+		return nil, nil, apperror.NewUnauthorized("Invalid token")
 	}
 	return verifiedToken, claims, nil
 }
