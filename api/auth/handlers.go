@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"auth/apperror"
+	"auth/internal/apperror"
 	"auth/internal/ulidutil"
 	"auth/jet/postgres/public/model"
 	"crypto/ed25519"

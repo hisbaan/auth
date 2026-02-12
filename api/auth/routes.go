@@ -1,48 +1,29 @@
 package auth
 
 import (
-	"auth/apperror"
+	"auth/internal/httputil"
 	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 )
 
-func parseBody(w http.ResponseWriter, r *http.Request, body any) {
-	err := json.NewDecoder(r.Body).Decode(body)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Invalid request"))
-	}
-}
-
-func handleErrors(w http.ResponseWriter, err error) {
-	serr, ok := err.(apperror.HTTPError)
-	if ok {
-		w.WriteHeader(serr.StatusCode())
-		w.Write([]byte(serr.Error()))
-	} else {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal server error"))
-	}
-}
-
 func Router(s *AuthService) http.Handler {
 	r := chi.NewRouter()
 
 	r.Post("/register", func(w http.ResponseWriter, r *http.Request) {
 		var body CreateUserParams
-		parseBody(w, r, &body)
+		httputil.ParseBody(w, r, &body)
 
 		err := s.CreateUser(body)
 		if err != nil {
-			handleErrors(w, err)
+			httputil.HandleErrors(w, err)
 		}
 	})
 
 	r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
 		var body LoginParams
-		parseBody(w, r, &body)
+		httputil.ParseBody(w, r, &body)
 
 		ip := r.RemoteAddr
 		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
@@ -52,7 +33,7 @@ func Router(s *AuthService) http.Handler {
 
 		loginResponse, err := s.Login(body, ip, userAgent)
 		if err != nil {
-			handleErrors(w, err)
+			httputil.HandleErrors(w, err)
 			return
 		}
 
@@ -63,7 +44,7 @@ func Router(s *AuthService) http.Handler {
 
 	r.Post("/refresh", func(w http.ResponseWriter, r *http.Request) {
 		var body RefreshParams
-		parseBody(w, r, &body)
+		httputil.ParseBody(w, r, &body)
 
 		ip := r.RemoteAddr
 		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
@@ -73,7 +54,7 @@ func Router(s *AuthService) http.Handler {
 
 		refreshResponse, err := s.Refresh(body, ip, userAgent)
 		if err != nil {
-			handleErrors(w, err)
+			httputil.HandleErrors(w, err)
 			return
 		}
 

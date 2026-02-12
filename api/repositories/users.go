@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"auth/apperror"
+	"auth/internal/apperror"
 	"auth/jet/postgres/public/model"
 	. "auth/jet/postgres/public/table"
 	"database/sql"

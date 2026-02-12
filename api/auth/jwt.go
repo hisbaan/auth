@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"auth/apperror"
+	"auth/internal/apperror"
 	"crypto/ed25519"
 	"time"
 
