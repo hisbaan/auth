@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"auth/auth"
+	"auth/internal/auth"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/go-chi/chi/v5"

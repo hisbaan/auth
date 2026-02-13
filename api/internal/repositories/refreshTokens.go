@@ -2,8 +2,8 @@ package repositories
 
 import (
 	"auth/internal/apperror"
-	"auth/jet/postgres/public/model"
-	. "auth/jet/postgres/public/table"
+	"auth/internal/jet/postgres/public/model"
+	. "auth/internal/jet/postgres/public/table"
 	"database/sql"
 	"time"
 

@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"auth/repositories"
+	"auth/internal/repositories"
 	"crypto/ed25519"
 	"database/sql"
 	"time"

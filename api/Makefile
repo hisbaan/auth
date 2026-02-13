@@ -8,7 +8,7 @@ endif
 # Generate go-jet SQL builder code from database
 jet:
 	@if [ -z "$(DATABASE_URL)" ]; then echo "DATABASE_URL is not set"; exit 1; fi
-	jet -dsn=$(DATABASE_URL) -schema=public -path=./jet
+	jet -dsn=$(DATABASE_URL) -schema=public -path=./internal/jet
 
 # Generate database migrations from HCL schema changes
 # Usage: make db-generate name=add_users_table
