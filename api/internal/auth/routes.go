@@ -3,6 +3,7 @@ package auth
 import (
 	"auth/internal/httputil"
 	"encoding/json"
+	"net"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -29,6 +30,9 @@ func Router(s *AuthService) http.Handler {
 		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
 			ip = forwarded
 		}
+		if host, _, err := net.SplitHostPort(ip); err == nil {
+			ip = host
+		}
 		userAgent := r.UserAgent()
 
 		loginResponse, err := s.Login(body, ip, userAgent)
@@ -49,6 +53,9 @@ func Router(s *AuthService) http.Handler {
 		ip := r.RemoteAddr
 		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
 			ip = forwarded
+		}
+		if host, _, err := net.SplitHostPort(ip); err == nil {
+			ip = host
 		}
 		userAgent := r.UserAgent()
 
