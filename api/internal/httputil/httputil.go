@@ -6,11 +6,13 @@ import (
 	"net/http"
 )
 
-func ParseBody(w http.ResponseWriter, r *http.Request, body any) {
+func ParseBody(w http.ResponseWriter, r *http.Request, body any) error {
 	err := json.NewDecoder(r.Body).Decode(body)
 	if err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return err
 	}
+	return nil
 }
 
 func HandleErrors(w http.ResponseWriter, err error) {

@@ -13,17 +13,23 @@ func Router(s *AuthService) http.Handler {
 
 	r.Post("/register", func(w http.ResponseWriter, r *http.Request) {
 		var body CreateUserParams
-		httputil.ParseBody(w, r, &body)
+		if err := httputil.ParseBody(w, r, &body); err != nil {
+			return
+		}
 
 		err := s.CreateUser(body)
 		if err != nil {
 			httputil.HandleErrors(w, err)
+			return
 		}
+		w.WriteHeader(http.StatusNoContent)
 	})
 
 	r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
 		var body LoginParams
-		httputil.ParseBody(w, r, &body)
+		if err := httputil.ParseBody(w, r, &body); err != nil {
+			return
+		}
 
 		ip := r.RemoteAddr
 		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
@@ -45,7 +51,9 @@ func Router(s *AuthService) http.Handler {
 
 	r.Post("/refresh", func(w http.ResponseWriter, r *http.Request) {
 		var body RefreshParams
-		httputil.ParseBody(w, r, &body)
+		if err := httputil.ParseBody(w, r, &body); err != nil {
+			return
+		}
 
 		ip := r.RemoteAddr
 		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
