@@ -9,18 +9,15 @@ import (
 func ParseBody(w http.ResponseWriter, r *http.Request, body any) {
 	err := json.NewDecoder(r.Body).Decode(body)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Invalid request"))
+		http.Error(w, "Invalid request", http.StatusBadRequest)
 	}
 }
 
 func HandleErrors(w http.ResponseWriter, err error) {
 	serr, ok := err.(apperror.HTTPError)
 	if ok {
-		w.WriteHeader(serr.StatusCode())
-		w.Write([]byte(serr.Error()))
+		http.Error(w, serr.Error(), serr.StatusCode())
 	} else {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal server error"))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }

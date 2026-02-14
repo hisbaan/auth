@@ -5,6 +5,7 @@ import (
 	"auth/internal/jet/postgres/public/model"
 	. "auth/internal/jet/postgres/public/table"
 	"database/sql"
+	"log"
 	"time"
 
 	. "github.com/go-jet/jet/v2/postgres"
@@ -33,6 +34,7 @@ func (r *refreshTokenRepository) GetByID(id ulid.ULID) (*model.RefreshTokens, er
 	var tokens []model.RefreshTokens
 	err := query.Query(r.db, &tokens)
 	if err != nil {
+		log.Printf("[ERROR] GetByID query failed: %v", err)
 		return nil, apperror.NewInternalServerError("Database query error")
 	}
 
@@ -49,6 +51,7 @@ func (r *refreshTokenRepository) Revoke(id ulid.ULID) error {
 		WHERE(RefreshTokens.ID.EQ(Bytea(id.Bytes()))).
 		Exec(r.db)
 	if err != nil {
+		log.Printf("[ERROR] Revoke token failed: %v", err)
 		return apperror.NewInternalServerError("Database query error")
 	}
 	return nil
@@ -57,6 +60,7 @@ func (r *refreshTokenRepository) Revoke(id ulid.ULID) error {
 func (r *refreshTokenRepository) Create(token model.RefreshTokens) error {
 	_, err := RefreshTokens.INSERT().MODEL(token).Exec(r.db)
 	if err != nil {
+		log.Printf("[ERROR] Create refresh token failed: %v", err)
 		return apperror.NewInternalServerError("Database query error")
 	}
 	return nil
