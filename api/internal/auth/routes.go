@@ -2,7 +2,6 @@ package auth
 
 import (
 	"auth/internal/httputil"
-	"encoding/json"
 	"net"
 	"net/http"
 
@@ -41,9 +40,7 @@ func Router(s *AuthService) http.Handler {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(loginResponse)
+		httputil.JSONResponse(w, http.StatusOK, loginResponse)
 	})
 
 	r.Post("/refresh", func(w http.ResponseWriter, r *http.Request) {
@@ -65,9 +62,7 @@ func Router(s *AuthService) http.Handler {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(refreshResponse)
+		httputil.JSONResponse(w, http.StatusOK, refreshResponse)
 	})
 
 	r.Post("/forgot-password", func(w http.ResponseWriter, r *http.Request) {

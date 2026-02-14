@@ -21,3 +21,9 @@ func HandleErrors(w http.ResponseWriter, err error) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
+
+func JSONResponse(w http.ResponseWriter, status int, response any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
