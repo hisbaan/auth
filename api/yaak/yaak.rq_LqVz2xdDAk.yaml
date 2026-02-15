@@ -1,0 +1,26 @@
+type: http_request
+model: http_request
+id: rq_LqVz2xdDAk
+createdAt: 2026-02-13T13:22:25.058159145
+updatedAt: 2026-02-14T04:15:06.231107702
+workspaceId: wk_rqabM2anNY
+folderId: fl_Raco49H2dm
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "refresh_token": "${[ response.body.path(request='rq_2BAmoGDPcX', behavior='always', ttl='0', result='first', join=b64'LCA', path=b64'JC5yZWZyZXNoX3Rva2Vu') ]}"
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: xHBQS9PhDS
+method: POST
+name: ''
+sortPriority: 0.0
+url: http://localhost:3000/auth/refresh
+urlParameters: []

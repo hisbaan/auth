@@ -1,0 +1,28 @@
+type: http_request
+model: http_request
+id: rq_6CNfERuv3y
+createdAt: 2026-02-08T07:26:49.551442113
+updatedAt: 2026-02-15T00:11:40.659220107
+workspaceId: wk_rqabM2anNY
+folderId: fl_Raco49H2dm
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "email": "hisbaan+1@gmail.com",
+      "username": "hisbaan",
+      "password": "thisisatest"
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: jbSZxsGt22
+method: POST
+name: ''
+sortPriority: 2000.0
+url: http://localhost:3000/auth/register
+urlParameters: []

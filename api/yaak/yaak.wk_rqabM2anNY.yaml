@@ -1,0 +1,15 @@
+type: workspace
+model: workspace
+id: wk_rqabM2anNY
+createdAt: 2026-02-08T07:25:54.485948396
+updatedAt: 2026-02-14T03:58:42.364358223
+authentication: {}
+authenticationType: null
+description: ''
+headers: []
+name: Auth
+encryptionKeyChallenge: null
+settingValidateCertificates: true
+settingFollowRedirects: true
+settingRequestTimeout: 0
+settingDnsOverrides: []

@@ -1,0 +1,27 @@
+type: http_request
+model: http_request
+id: rq_APQGxWVQMf
+createdAt: 2026-02-14T23:50:05.254645048
+updatedAt: 2026-02-15T05:06:35.760371295
+workspaceId: wk_rqabM2anNY
+folderId: fl_iqLoX9Msgo
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "current_password": "thisisatest",
+      "new_password": "thisisatest1e"
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: 6sIPjTupTU
+method: POST
+name: ''
+sortPriority: 0.0
+url: http://localhost:3000/users/me/password
+urlParameters: []
