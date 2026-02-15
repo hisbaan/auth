@@ -85,10 +85,12 @@ table "refresh_tokens" {
   foreign_key "fk_refresh_tokens_parent_id" {
     columns = [column.parent_id]
     ref_columns = [table.refresh_tokens.column.id]
+    on_delete = "CASCADE"
   }
   foreign_key "fk_refresh_tokens_user_id" {
     columns = [column.user_id]
     ref_columns = [table.users.column.id]
+    on_delete = "CASCADE"
   }
   index "idx_refresh_tokens_user" {
     columns = [column.user_id]

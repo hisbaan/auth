@@ -29,6 +29,14 @@ func (s *AuthService) CreateUser(params CreateUserParams) error {
 		PasswordHash: hash,
 	}
 
+	userExists, err := s.userRepo.WillConflict(user)
+	if err != nil {
+		return err
+	}
+	if userExists {
+		return apperror.NewConflict("Username or email already in use")
+	}
+
 	return s.userRepo.Create(user)
 }
 

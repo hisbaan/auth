@@ -1,0 +1,2 @@
+-- Modify "refresh_tokens" table
+ALTER TABLE "refresh_tokens" DROP CONSTRAINT "fk_refresh_tokens_parent_id", DROP CONSTRAINT "fk_refresh_tokens_user_id", ADD CONSTRAINT "fk_refresh_tokens_parent_id" FOREIGN KEY ("parent_id") REFERENCES "refresh_tokens" ("id") ON UPDATE NO ACTION ON DELETE CASCADE, ADD CONSTRAINT "fk_refresh_tokens_user_id" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON UPDATE NO ACTION ON DELETE CASCADE;

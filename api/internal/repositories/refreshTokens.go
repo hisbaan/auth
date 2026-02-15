@@ -15,6 +15,7 @@ import (
 type RefreshTokenRepository interface {
 	GetByID(id ulid.ULID) (*model.RefreshTokens, error)
 	Revoke(id ulid.ULID) error
+	RevokeByUserID(userID ulid.ULID) error
 	Create(token model.RefreshTokens) error
 }
 
@@ -48,10 +49,22 @@ func (r *refreshTokenRepository) GetByID(id ulid.ULID) (*model.RefreshTokens, er
 func (r *refreshTokenRepository) Revoke(id ulid.ULID) error {
 	_, err := RefreshTokens.UPDATE().
 		SET(RefreshTokens.RevokedAt.SET(TimestampzT(time.Now()))).
-		WHERE(RefreshTokens.ID.EQ(Bytea(id.Bytes()))).
+		WHERE(AND(RefreshTokens.ID.EQ(Bytea(id.Bytes())), RefreshTokens.RevokedAt.IS_NULL())).
 		Exec(r.db)
 	if err != nil {
 		log.Printf("[ERROR] Revoke token failed: %v", err)
+		return apperror.NewInternalServerError("Database query error")
+	}
+	return nil
+}
+
+func (r *refreshTokenRepository) RevokeByUserID(userID ulid.ULID) error {
+	_, err := RefreshTokens.UPDATE().
+		SET(RefreshTokens.RevokedAt.SET(TimestampzT(time.Now()))).
+		WHERE(AND(RefreshTokens.UserID.EQ(Bytea(userID.Bytes())), RefreshTokens.RevokedAt.IS_NULL())).
+		Exec(r.db)
+	if err != nil {
+		log.Printf("[ERROR] Revoke tokens by userID failed: %v", err)
 		return apperror.NewInternalServerError("Database query error")
 	}
 	return nil

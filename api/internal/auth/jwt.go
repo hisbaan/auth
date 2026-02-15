@@ -62,3 +62,17 @@ func ValidateToken(publicKey ed25519.PublicKey, token string) (*jwt.Token, *jwt.
 	}
 	return verifiedToken, claims, nil
 }
+
+func ValidateClaims(claims *jwt.RegisteredClaims, issuer string) error {
+	if claims.Issuer != issuer {
+		return apperror.NewUnauthorized("Invalid token")
+	}
+	if claims.ExpiresAt.Before(time.Now()) {
+		return apperror.NewUnauthorized("Invalid token")
+	}
+	if claims.ExpiresAt.Before(time.Now()) {
+		return apperror.NewUnauthorized("Invalid token")
+	}
+
+	return nil
+}

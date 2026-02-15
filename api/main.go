@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"auth/internal/auth"
+	"auth/internal/users"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/go-chi/chi/v5"
@@ -82,6 +83,12 @@ func main() {
 		log.Fatalf("failed to create auth service: %v", err)
 	}
 	r.Mount("/auth", auth.Router(authService))
+
+	usersService, err := users.NewUsersService(db, accessKey, refreshKey, cfg.IssuerUrl)
+	if err != nil {
+		log.Fatalf("failed to create users service: %v", err)
+	}
+	r.Mount("/users", users.Router(usersService))
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	log.Fatal(http.ListenAndServe(":"+cfg.Port, r))

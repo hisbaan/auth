@@ -1,3 +1,4 @@
-h1:d1j0SbyR9Zd+KnSj+uaMNs7onsj/mHBlleZHArTx0Ps=
+h1:klalZ/BUhc6nsGEGx+NjJk8sYIiHQmr1AE31npcHOp8=
 20260202013949_add_users.sql h1:0dI3m7JqBwiuea7jS/QcoMakPM+HDj8vmaXF3iKvQKY=
 20260207180419_add_refresh_tokens.sql h1:XUC9xWpi11J0pGSBHQenF4WzKVo9FWNnIPorAH0WtJ4=
+20260215021359_refresh_token_on_delete_cascade.sql h1:dhBExhYeee1bGnu2zd/j5T2viRWeLnkbcYRuYcicuH8=

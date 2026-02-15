@@ -48,7 +48,7 @@ run:
 	./bin/auth
 
 dev:
-	go run main.go
+	air
 
 clean:
 	rm -rf ./bin/*

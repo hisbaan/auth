@@ -1,11 +1,15 @@
 package auth
 
-import "github.com/alexedwards/argon2id"
+import (
+	"auth/internal/apperror"
+
+	"github.com/alexedwards/argon2id"
+)
 
 func HashPassword(password string) (string, error) {
 	hash, err := argon2id.CreateHash(password, argon2id.DefaultParams)
 	if err != nil {
-		return "", err
+		return "", apperror.NewInternalServerError("Internal server error")
 	}
 	return string(hash), nil
 }
