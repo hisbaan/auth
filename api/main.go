@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"auth/internal/auth"
+	"auth/internal/emails"
 	"auth/internal/users"
 
 	"github.com/caarlos0/env/v11"
@@ -25,6 +26,10 @@ type Config struct {
 	JWTAccessKeyPEM  string `env:"JWT_ACCESS_KEY_FILE,file,required"`
 	JWTRefreshKeyPEM string `env:"JWT_REFRESH_KEY_FILE,file,required"`
 	IssuerUrl        string `env:"ISSUER_URL,required"`
+	ResendAPIKey     string `env:"RESEND_API_KEY,required"`
+	FromEmail        string `env:"FROM_EMAIL,required"`
+	FrontendURL      string `env:"FRONTEND_URL,required"`
+	ServiceName      string `env:"SERVICE_NAME,required"`
 }
 
 func parseEd25519PrivateKey(pemContent string) (ed25519.PrivateKey, error) {
@@ -70,6 +75,12 @@ func main() {
 		log.Fatalf("failed to parse refresh key: %v", err)
 	}
 
+	// Setup resend
+	emailService, err := emails.NewEmailService(cfg.ResendAPIKey, cfg.FromEmail, cfg.FrontendURL, cfg.ServiceName)
+	if err != nil {
+		log.Fatalf("Failed to setup resend: %v", err)
+	}
+
 	// Setup chi router
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -78,7 +89,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
 
-	authService, err := auth.NewAuthService(db, accessKey, refreshKey, cfg.IssuerUrl)
+	authService, err := auth.NewAuthService(db, accessKey, refreshKey, cfg.IssuerUrl, emailService)
 	if err != nil {
 		log.Fatalf("failed to create auth service: %v", err)
 	}

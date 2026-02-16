@@ -201,3 +201,20 @@ func (s *AuthService) Refresh(params RefreshParams, ip string, userAgent string)
 		RefreshToken: newRefreshToken,
 	}, nil
 }
+
+type ForgotPasswordParams struct {
+	Email string `json:"email"`
+}
+
+func (s *AuthService) ForgotPassword(params ForgotPasswordParams) error {
+	user, err := s.userRepo.GetByEmail(params.Email)
+	if err != nil {
+		return err
+	}
+
+	// TODO: Generate reset token and store it with expiry
+	resetToken := "PLACEHOLDER_TOKEN"
+	s.emailService.SendForgotPasswordEmail(params.Email, user.Username, resetToken)
+
+	return nil
+}

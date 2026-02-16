@@ -15,7 +15,7 @@ func ParseBody(w http.ResponseWriter, r *http.Request, body any) error {
 	return nil
 }
 
-func HandleErrors(w http.ResponseWriter, err error) {
+func HandleError(w http.ResponseWriter, err error) {
 	serr, ok := err.(apperror.HTTPError)
 	if ok {
 		http.Error(w, serr.Error(), serr.StatusCode())

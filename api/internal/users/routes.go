@@ -24,7 +24,7 @@ func Router(s *UsersService) http.Handler {
 
 		response, err := s.GetUser(userID)
 		if err != nil {
-			httputil.HandleErrors(w, err)
+			httputil.HandleError(w, err)
 			return
 		}
 
@@ -45,7 +45,7 @@ func Router(s *UsersService) http.Handler {
 
 		err = s.UpdateUser(userID, body)
 		if err != nil {
-			httputil.HandleErrors(w, err)
+			httputil.HandleError(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -65,7 +65,7 @@ func Router(s *UsersService) http.Handler {
 
 		err = s.UpdatePassword(userID, body)
 		if err != nil {
-			httputil.HandleErrors(w, err)
+			httputil.HandleError(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -80,7 +80,7 @@ func Router(s *UsersService) http.Handler {
 
 		err = s.DeleteUser(userID)
 		if err != nil {
-			httputil.HandleErrors(w, err)
+			httputil.HandleError(w, err)
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})

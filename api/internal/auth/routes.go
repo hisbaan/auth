@@ -19,7 +19,7 @@ func Router(s *AuthService) http.Handler {
 
 		err := s.CreateUser(body)
 		if err != nil {
-			httputil.HandleErrors(w, err)
+			httputil.HandleError(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -42,7 +42,7 @@ func Router(s *AuthService) http.Handler {
 
 		loginResponse, err := s.Login(body, ip, userAgent)
 		if err != nil {
-			httputil.HandleErrors(w, err)
+			httputil.HandleError(w, err)
 			return
 		}
 
@@ -66,7 +66,7 @@ func Router(s *AuthService) http.Handler {
 
 		refreshResponse, err := s.Refresh(body, ip, userAgent)
 		if err != nil {
-			httputil.HandleErrors(w, err)
+			httputil.HandleError(w, err)
 			return
 		}
 
@@ -74,8 +74,18 @@ func Router(s *AuthService) http.Handler {
 	})
 
 	r.Post("/forgot-password", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
-		w.Write([]byte("Not yet implemented"))
+		var body ForgotPasswordParams
+		if err := httputil.ParseBody(w, r, &body); err != nil {
+			return
+		}
+
+		err := s.ForgotPassword(body)
+		if err != nil {
+			httputil.HandleError(w, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
 	})
 
 	r.Post("/reset-password", func(w http.ResponseWriter, r *http.Request) {
