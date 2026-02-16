@@ -12,19 +12,24 @@ import (
 //go:embed templates/forgot-password.html
 var forgotPasswordTemplate string
 
+//go:embed templates/verify-email.html
+var verifyEmailTemplate string
+
 type EmailService struct {
-	client      *resend.Client
-	from        string
-	frontendURL string
-	serviceName string
+	client       *resend.Client
+	from         string
+	frontendURL  string
+	serviceName  string
+	supportEmail string
 }
 
-func NewEmailService(resendAPIKey string, from string, frontendURL string, serviceName string) (*EmailService, error) {
+func NewEmailService(resendAPIKey string, from string, frontendURL string, serviceName string, supportEmail string) (*EmailService, error) {
 	return &EmailService{
-		client:      resend.NewClient(resendAPIKey),
-		from:        from,
-		frontendURL: frontendURL,
-		serviceName: serviceName,
+		client:       resend.NewClient(resendAPIKey),
+		from:         from,
+		frontendURL:  frontendURL,
+		serviceName:  serviceName,
+		supportEmail: supportEmail,
 	}, nil
 }
 
@@ -74,4 +79,34 @@ func (s *EmailService) SendForgotPasswordEmail(to string, username string, reset
 	}
 
 	s.SendEmail([]string{to}, htmlBuilder.String(), "Reset your password - "+s.serviceName)
+}
+
+func (s *EmailService) SendVerifyEmail(to string, username string, verifyToken string) {
+	verifyURL := s.frontendURL + "/verify-email?token=" + verifyToken
+
+	tmpl, err := template.New("verify-email").Parse(verifyEmailTemplate)
+	if err != nil {
+		log.Printf("[ERROR] Failed to parse verify email template: %v", err)
+		return
+	}
+
+	type verifyEmailData struct {
+		Username     string
+		VerifyLink   string
+		SupportEmail string
+	}
+
+	data := verifyEmailData{
+		Username:     username,
+		VerifyLink:   verifyURL,
+		SupportEmail: s.supportEmail,
+	}
+
+	var htmlBuilder strings.Builder
+	if err := tmpl.Execute(&htmlBuilder, data); err != nil {
+		log.Printf("[ERROR] Failed to execute verify email template: %v", err)
+		return
+	}
+
+	s.SendEmail([]string{to}, htmlBuilder.String(), "Verify your email - "+s.serviceName)
 }

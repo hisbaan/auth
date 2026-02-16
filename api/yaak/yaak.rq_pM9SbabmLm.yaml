@@ -1,0 +1,26 @@
+type: http_request
+model: http_request
+id: rq_pM9SbabmLm
+createdAt: 2026-02-16T17:43:07.989933954
+updatedAt: 2026-02-16T17:43:30.536986022
+workspaceId: wk_rqabM2anNY
+folderId: fl_Raco49H2dm
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "email": "hisbaan@gmail.com"
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: 8jXFF620fY
+method: POST
+name: ''
+sortPriority: 1000.0
+url: http://localhost:3000/auth/forgot-password
+urlParameters: []

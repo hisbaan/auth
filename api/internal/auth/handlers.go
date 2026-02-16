@@ -211,10 +211,23 @@ func (s *AuthService) ForgotPassword(params ForgotPasswordParams) error {
 	if err != nil {
 		return err
 	}
+	userID := ulidutil.MustFromBytes(user.ID)
 
-	// TODO: Generate reset token and store it with expiry
-	resetToken := "PLACEHOLDER_TOKEN"
-	s.emailService.SendForgotPasswordEmail(params.Email, user.Username, resetToken)
+	s.passwordResetTokenRepo.RevokeByUserID(userID)
+
+	token, hashedToken := GenerateResetToken()
+	passwordResetTokenModel := model.PasswordResetTokens{
+		ID:        ulid.Make().Bytes(),
+		UserID:    user.ID,
+		TokenHash: hashedToken,
+		ExpiresAt: time.Now().Add(time.Duration(15) * time.Minute),
+		RevokedAt: nil,
+		CreatedAt: time.Now(),
+	}
+	s.passwordResetTokenRepo.Create(passwordResetTokenModel)
+	urlEncodedToken := URLEncodeToken(token)
+
+	s.emailService.SendForgotPasswordEmail(params.Email, user.Username, urlEncodedToken)
 
 	return nil
 }

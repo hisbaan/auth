@@ -96,3 +96,32 @@ table "refresh_tokens" {
     columns = [column.user_id]
   }
 }
+
+table "password_reset_tokens" {
+  schema = schema.public
+
+  column "id" {
+    type = bytea
+    null = false
+  }
+  column "user_id" {
+    type = bytea
+    null = false
+  }
+  column "token_hash" {
+    type = bytea
+    null = false
+  }
+  column "expires_at" {
+    type = timestamptz
+    null = false
+  }
+  column "revoked_at" {
+    type = timestamptz
+    null = true
+  }
+  column "created_at" {
+    type = timestamptz
+    null = false
+  }
+}

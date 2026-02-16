@@ -12,22 +12,15 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-type RefreshTokenRepository interface {
-	GetByID(id ulid.ULID) (*model.RefreshTokens, error)
-	Revoke(id ulid.ULID) error
-	RevokeByUserID(userID ulid.ULID) error
-	Create(token model.RefreshTokens) error
-}
-
-type refreshTokenRepository struct {
+type RefreshTokenRepository struct {
 	db *sql.DB
 }
 
 func NewRefreshTokenRepository(db *sql.DB) RefreshTokenRepository {
-	return &refreshTokenRepository{db: db}
+	return RefreshTokenRepository{db: db}
 }
 
-func (r *refreshTokenRepository) GetByID(id ulid.ULID) (*model.RefreshTokens, error) {
+func (r *RefreshTokenRepository) GetByID(id ulid.ULID) (*model.RefreshTokens, error) {
 	query := RefreshTokens.SELECT(RefreshTokens.AllColumns).
 		WHERE(RefreshTokens.ID.EQ(Bytea(id.Bytes()))).
 		LIMIT(1)
@@ -46,7 +39,7 @@ func (r *refreshTokenRepository) GetByID(id ulid.ULID) (*model.RefreshTokens, er
 	return &tokens[0], nil
 }
 
-func (r *refreshTokenRepository) Revoke(id ulid.ULID) error {
+func (r *RefreshTokenRepository) Revoke(id ulid.ULID) error {
 	_, err := RefreshTokens.UPDATE().
 		SET(RefreshTokens.RevokedAt.SET(TimestampzT(time.Now()))).
 		WHERE(AND(RefreshTokens.ID.EQ(Bytea(id.Bytes())), RefreshTokens.RevokedAt.IS_NULL())).
@@ -58,7 +51,7 @@ func (r *refreshTokenRepository) Revoke(id ulid.ULID) error {
 	return nil
 }
 
-func (r *refreshTokenRepository) RevokeByUserID(userID ulid.ULID) error {
+func (r *RefreshTokenRepository) RevokeByUserID(userID ulid.ULID) error {
 	_, err := RefreshTokens.UPDATE().
 		SET(RefreshTokens.RevokedAt.SET(TimestampzT(time.Now()))).
 		WHERE(AND(RefreshTokens.UserID.EQ(Bytea(userID.Bytes())), RefreshTokens.RevokedAt.IS_NULL())).
@@ -70,7 +63,7 @@ func (r *refreshTokenRepository) RevokeByUserID(userID ulid.ULID) error {
 	return nil
 }
 
-func (r *refreshTokenRepository) Create(token model.RefreshTokens) error {
+func (r *RefreshTokenRepository) Create(token model.RefreshTokens) error {
 	_, err := RefreshTokens.INSERT().MODEL(token).Exec(r.db)
 	if err != nil {
 		log.Printf("[ERROR] Create refresh token failed: %v", err)

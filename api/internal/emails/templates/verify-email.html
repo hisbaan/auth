@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <body style="max-width: 600px; padding: 0 20px; color: #000">
+    <h1 style="font-weight: 400; font-size: 24px">Verify Your Email</h1>
+    <p>Hi {{.Username}},</p>
+    <p>Please verify your email address by clicking the button below:</p>
+    <p style="text-align: center">
+      <a
+        href="{{.VerifyLink}}"
+        style="
+          border: 1px solid #000;
+          color: #fff;
+          background-color: #000;
+          padding: 12px 18px;
+          border-radius: 8px;
+          text-decoration: none;
+          display: inline-block;
+        "
+      >
+        Verify Email
+      </a>
+    </p>
+    <p>
+      This link will expire in 24 hours. If you didn't create an account, someone may have created one on your behalf. Please contact support at {{.SupportEmail}}
+    </p>
+    <p style="font-size: 14px; color: #666; margin-top: 32px">
+      If the button doesn't work, use this link: {{.VerifyLink}}
+    </p>
+  </body>
+</html>

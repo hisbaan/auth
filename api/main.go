@@ -30,6 +30,7 @@ type Config struct {
 	FromEmail        string `env:"FROM_EMAIL,required"`
 	FrontendURL      string `env:"FRONTEND_URL,required"`
 	ServiceName      string `env:"SERVICE_NAME,required"`
+	SupportEmail     string `env:"SUPPORT_EMAIL,required"`
 }
 
 func parseEd25519PrivateKey(pemContent string) (ed25519.PrivateKey, error) {
@@ -76,7 +77,7 @@ func main() {
 	}
 
 	// Setup resend
-	emailService, err := emails.NewEmailService(cfg.ResendAPIKey, cfg.FromEmail, cfg.FrontendURL, cfg.ServiceName)
+	emailService, err := emails.NewEmailService(cfg.ResendAPIKey, cfg.FromEmail, cfg.FrontendURL, cfg.ServiceName, cfg.SupportEmail)
 	if err != nil {
 		log.Fatalf("Failed to setup resend: %v", err)
 	}
