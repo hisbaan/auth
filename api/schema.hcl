@@ -128,6 +128,19 @@ table "password_reset_tokens" {
     type = timestamptz
     null = false
   }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "fk_password_reset_tokens_user_id" {
+    columns = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete = CASCADE
+  }
+  index "idx_password_reset_tokens_user" {
+    columns = [column.user_id]
+  }
+}
+
 table "email_verification_tokens" {
   schema = schema.public
 
