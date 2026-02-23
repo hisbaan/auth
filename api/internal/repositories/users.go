@@ -59,6 +59,8 @@ func (r *UserRepository) GetByEmail(email string) (*model.Users, error) {
 }
 
 func (r *UserRepository) Create(user model.Users) error {
+	user.CreatedAt = time.Now()
+	user.UpdatedAt = time.Now()
 	_, err := Users.INSERT().MODEL(user).ON_CONFLICT().DO_NOTHING().Exec(r.db)
 	if err != nil {
 		log.Printf("[ERROR] Create user failed: %v", err)
@@ -68,6 +70,7 @@ func (r *UserRepository) Create(user model.Users) error {
 }
 
 func (r *UserRepository) Update(user model.Users) error {
+	user.UpdatedAt = time.Now()
 	_, err := Users.UPDATE(Users.Email, Users.Username, Users.EmailVerified, Users.UpdatedAt).MODEL(user).WHERE(Users.ID.EQ(Bytea(user.ID))).Exec(r.db)
 	if err != nil {
 		log.Printf("[ERROR] Update user failed: %v", err)
