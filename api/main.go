@@ -96,7 +96,7 @@ func main() {
 	}
 	r.Mount("/auth", auth.Router(authService))
 
-	usersService, err := users.NewUsersService(db, accessKey, refreshKey, cfg.IssuerUrl)
+	usersService, err := users.NewUsersService(db, accessKey, refreshKey, cfg.IssuerUrl, emailService)
 	if err != nil {
 		log.Fatalf("failed to create users service: %v", err)
 	}

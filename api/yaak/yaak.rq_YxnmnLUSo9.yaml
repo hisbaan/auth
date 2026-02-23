@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_YxnmnLUSo9
 createdAt: 2026-02-14T16:48:35.829739554
-updatedAt: 2026-02-14T20:55:02.363524834
+updatedAt: 2026-02-23T15:49:51.214291
 workspaceId: wk_rqabM2anNY
 folderId: fl_iqLoX9Msgo
 authentication: {}
@@ -10,7 +10,6 @@ authenticationType: null
 body:
   text: |-
     {
-      "id": "user_01KGT98EWSPXQEWMW6SP1Y6AQJ",
       "email": "hisbaan@gmail.com",
       "username": "hisbaan"
     }

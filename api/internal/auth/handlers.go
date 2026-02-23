@@ -23,10 +23,11 @@ func (s *AuthService) CreateUser(params CreateUserParams) error {
 	}
 
 	user := model.Users{
-		ID:           ulid.Make().Bytes(),
-		Username:     params.Username,
-		Email:        params.Email,
-		PasswordHash: hash,
+		ID:            ulid.Make().Bytes(),
+		Username:      params.Username,
+		Email:         params.Email,
+		EmailVerified: false,
+		PasswordHash:  hash,
 	}
 
 	userExists, err := s.userRepo.WillConflict(user)
@@ -37,7 +38,29 @@ func (s *AuthService) CreateUser(params CreateUserParams) error {
 		return apperror.NewConflict("Username or email already in use")
 	}
 
-	return s.userRepo.Create(user)
+	err = s.userRepo.Create(user)
+	if err != nil {
+		return err
+	}
+
+	userID := ulidutil.MustFromBytes(user.ID)
+	s.emailVerificationTokenRepo.RevokeByUserID(userID)
+
+	token, hashedToken := GenerateResetToken()
+	emailVerificationTokenModel := model.EmailVerificationTokens{
+		ID:        ulid.Make().Bytes(),
+		UserID:    user.ID,
+		TokenHash: hashedToken,
+		ExpiresAt: time.Now().Add(time.Duration(24) * time.Hour),
+		RevokedAt: nil,
+		CreatedAt: time.Now(),
+	}
+	s.emailVerificationTokenRepo.Create(emailVerificationTokenModel)
+	urlEncodedToken := URLEncodeToken(token)
+
+	s.emailService.SendVerifyEmail(params.Email, params.Username, urlEncodedToken)
+
+	return nil
 }
 
 type LoginParams struct {
@@ -228,6 +251,44 @@ func (s *AuthService) ForgotPassword(params ForgotPasswordParams) error {
 	urlEncodedToken := URLEncodeToken(token)
 
 	s.emailService.SendForgotPasswordEmail(params.Email, user.Username, urlEncodedToken)
+
+	return nil
+}
+
+type VerifyEmailParams struct {
+	Token string `json:"token"`
+}
+
+func (s *AuthService) VerifyEmail(params VerifyEmailParams) error {
+	token, err := URLDecodeToken(params.Token)
+	if err != nil {
+		return apperror.NewBadRequest("Invalid token format")
+	}
+
+	hashedToken := HashToken(token)
+
+	verificationToken, err := s.emailVerificationTokenRepo.GetByHash(hashedToken)
+	if err != nil {
+		return err
+	}
+
+	if verificationToken.RevokedAt != nil {
+		return apperror.NewBadRequest("Invalid token")
+	}
+
+	if verificationToken.ExpiresAt.Before(time.Now()) {
+		return apperror.NewBadRequest("Invalid token")
+	}
+
+	tokenID := ulidutil.MustFromBytes(verificationToken.ID)
+	if err := s.emailVerificationTokenRepo.Revoke(tokenID); err != nil {
+		return err
+	}
+
+	userID := ulidutil.MustFromBytes(verificationToken.UserID)
+	if err := s.userRepo.SetEmailVerified(userID); err != nil {
+		return err
+	}
 
 	return nil
 }

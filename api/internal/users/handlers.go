@@ -15,11 +15,12 @@ type GetUserParams struct {
 }
 
 type GetUserResponse struct {
-	ID        string    `json:"id"`
-	Email     string    `json:"email"`
-	Username  string    `json:"username"`
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
+	ID            string    `json:"id"`
+	Email         string    `json:"email"`
+	Username      string    `json:"username"`
+	EmailVerified bool      `json:"email_verified"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 func (s *UsersService) GetUser(userID ulid.ULID) (GetUserResponse, error) {
@@ -29,11 +30,12 @@ func (s *UsersService) GetUser(userID ulid.ULID) (GetUserResponse, error) {
 	}
 
 	return GetUserResponse{
-		ID:        ulidutil.ToPrefixed("user", userID),
-		Email:     user.Email,
-		Username:  user.Username,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+		ID:            ulidutil.ToPrefixed("user", userID),
+		Email:         user.Email,
+		Username:      user.Username,
+		EmailVerified: user.EmailVerified,
+		CreatedAt:     user.CreatedAt,
+		UpdatedAt:     user.UpdatedAt,
 	}, nil
 }
 
@@ -55,6 +57,31 @@ func (s *UsersService) UpdateUser(userID ulid.ULID, params UpdateUserParams) err
 	}
 	if willConflict {
 		return apperror.NewConflict("Username or email already in use")
+	}
+
+	existing, err := s.userRepo.GetByID(userID)
+	if err != nil {
+		return err
+	}
+	if existing.Email != params.Email {
+		user.EmailVerified = false
+
+		userID := ulidutil.MustFromBytes(user.ID)
+		s.emailVerificationTokenRepo.RevokeByUserID(userID)
+
+		token, hashedToken := auth.GenerateResetToken()
+		emailVerificationTokenModel := model.EmailVerificationTokens{
+			ID:        ulid.Make().Bytes(),
+			UserID:    user.ID,
+			TokenHash: hashedToken,
+			ExpiresAt: time.Now().Add(time.Duration(24) * time.Hour),
+			RevokedAt: nil,
+			CreatedAt: time.Now(),
+		}
+		s.emailVerificationTokenRepo.Create(emailVerificationTokenModel)
+		urlEncodedToken := auth.URLEncodeToken(token)
+
+		s.emailService.SendVerifyEmail(params.Email, params.Username, urlEncodedToken)
 	}
 
 	return s.userRepo.Update(user)
@@ -85,7 +112,7 @@ func (s *UsersService) UpdatePassword(userID ulid.ULID, params UpdatePasswordPar
 		return err
 	}
 
-	err = s.refreshRokenRepo.RevokeByUserID(userID)
+	err = s.refreshTokenRepo.RevokeByUserID(userID)
 	if err != nil {
 		return err
 	}

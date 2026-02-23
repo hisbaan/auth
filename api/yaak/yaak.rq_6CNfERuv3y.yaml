@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_6CNfERuv3y
 createdAt: 2026-02-08T07:26:49.551442113
-updatedAt: 2026-02-15T00:11:40.659220107
+updatedAt: 2026-02-22T17:21:51.904720
 workspaceId: wk_rqabM2anNY
 folderId: fl_Raco49H2dm
 authentication: {}
@@ -10,8 +10,8 @@ authenticationType: null
 body:
   text: |-
     {
-      "email": "hisbaan+1@gmail.com",
-      "username": "hisbaan",
+      "email": "hisbaan+4@gmail.com",
+      "username": "hisbaantest",
       "password": "thisisatest"
     }
 bodyType: application/json

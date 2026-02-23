@@ -93,5 +93,20 @@ func Router(s *AuthService) http.Handler {
 		w.Write([]byte("Not yet implemented"))
 	})
 
+	r.Post("/verify-email", func(w http.ResponseWriter, r *http.Request) {
+		var body VerifyEmailParams
+		if err := httputil.ParseBody(w, r, &body); err != nil {
+			return
+		}
+
+		err := s.VerifyEmail(body)
+		if err != nil {
+			httputil.HandleError(w, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	return r
 }

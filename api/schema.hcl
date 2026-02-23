@@ -19,6 +19,10 @@ table "users" {
     type = text
     null = false
   }
+  column "email_verified" {
+    type = boolean
+    null = false
+  }
   column "created_at" {
     type = timestamptz
     default = sql("now()")
@@ -123,5 +127,44 @@ table "password_reset_tokens" {
   column "created_at" {
     type = timestamptz
     null = false
+  }
+table "email_verification_tokens" {
+  schema = schema.public
+
+  column "id" {
+    type = bytea
+    null = false
+  }
+  column "user_id" {
+    type = bytea
+    null = false
+  }
+  column "token_hash" {
+    type = bytea
+    null = false
+  }
+  column "expires_at" {
+    type = timestamptz
+    null = false
+  }
+  column "revoked_at" {
+    type = timestamptz
+    null = true
+  }
+  column "created_at" {
+    type = timestamptz
+    null = false
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "fk_email_verification_tokens_user_id" {
+    columns = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete = CASCADE
+  }
+  index "idx_email_verification_tokens_user" {
+    columns = [column.user_id]
   }
 }
