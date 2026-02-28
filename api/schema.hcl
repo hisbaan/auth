@@ -47,6 +47,61 @@ table "users" {
   }
 }
 
+table "roles" {
+  schema = schema.public
+
+  column "name" {
+    type = text
+    null = false
+  }
+  column "created_at" {
+    type = timestamptz
+    default = sql("now()")
+    null = false
+  }
+  column "updated_at" {
+    type = timestamptz
+    default = sql("now()")
+    null = false
+  }
+
+  primary_key {
+    columns = [column.name]
+  }
+}
+
+table "user_roles" {
+  schema = schema.public
+
+  column "user_id" {
+    type = bytea
+    null = false
+  }
+  column "role" {
+    type = text
+    null = false
+  }
+  column "created_at" {
+    type = timestamptz
+    null = false
+    default = sql("now()")
+  }
+
+  primary_key {
+    columns = [column.user_id, column.role]
+  }
+  foreign_key "fk_user_roles_user_id" {
+    columns = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete = "CASCADE"
+  }
+  foreign_key "fk_user_roles_role" {
+    columns = [column.role]
+    ref_columns = [table.roles.column.name]
+    on_delete = "CASCADE"
+  }
+}
+
 table "refresh_tokens" {
   schema = schema.public
 

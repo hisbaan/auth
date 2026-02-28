@@ -13,5 +13,7 @@ func UseSchema(schema string) {
 	EmailVerificationTokens = EmailVerificationTokens.FromSchema(schema)
 	PasswordResetTokens = PasswordResetTokens.FromSchema(schema)
 	RefreshTokens = RefreshTokens.FromSchema(schema)
+	Roles = Roles.FromSchema(schema)
+	UserRoles = UserRoles.FromSchema(schema)
 	Users = Users.FromSchema(schema)
 }

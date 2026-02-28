@@ -4,9 +4,11 @@ import (
 	"auth/internal/apperror"
 	"auth/internal/jet/postgres/public/model"
 	"auth/internal/ulidutil"
+	"auth/internal/utils"
 	"crypto/ed25519"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/oklog/ulid/v2"
 )
 
@@ -91,17 +93,23 @@ func (s *AuthService) Login(params LoginParams, ip string, userAgent string) (Lo
 		return LoginResponse{}, apperror.NewUnauthorized("Invalid credentials")
 	}
 
+	userID := ulidutil.MustFromBytes(user.ID)
+	roles, err := s.roleRepo.GetByUserID(userID)
+	if err != nil {
+		return LoginResponse{}, err
+	}
+
 	accessToken, err := GenerateAccessToken(GenerateAccessTokenParams{
 		privateKey: s.jwtAccessKey,
 		issuer:     s.issuer,
 		userID:     ulidutil.MustFromBytes(user.ID),
+		roles:      utils.Map(roles, func(role model.Roles) string { return role.Name }),
 		expiry:     s.accessTokenExpiry,
 	})
 	if err != nil {
 		return LoginResponse{}, apperror.NewInternalServerError("Token generation error")
 	}
 
-	userID := ulidutil.MustFromBytes(user.ID)
 	refreshTokenModel := model.RefreshTokens{
 		ID:       ulid.Make().Bytes(),
 		UserID:   userID.Bytes(),
@@ -150,7 +158,7 @@ type RefreshResponse struct {
 }
 
 func (s *AuthService) Refresh(params RefreshParams, ip string, userAgent string) (RefreshResponse, error) {
-	_, claims, err := ValidateToken(s.jwtRefreshKey.Public().(ed25519.PublicKey), params.RefreshToken)
+	_, claims, err := ValidateToken[jwt.RegisteredClaims](s.jwtRefreshKey.Public().(ed25519.PublicKey), params.RefreshToken, jwt.RegisteredClaims{})
 	if err != nil {
 		return RefreshResponse{}, err
 	}
@@ -179,10 +187,15 @@ func (s *AuthService) Refresh(params RefreshParams, ip string, userAgent string)
 	}
 
 	userID := ulidutil.MustFromBytes(refreshToken.UserID)
+	roles, err := s.roleRepo.GetByUserID(userID)
+	if err != nil {
+		return RefreshResponse{}, err
+	}
 	accessToken, err := GenerateAccessToken(GenerateAccessTokenParams{
 		privateKey: s.jwtAccessKey,
 		issuer:     s.issuer,
 		userID:     userID,
+		roles:      utils.Map(roles, func(role model.Roles) string { return role.Name }),
 		expiry:     s.accessTokenExpiry,
 	})
 	if err != nil {

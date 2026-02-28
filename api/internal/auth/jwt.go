@@ -13,15 +13,24 @@ type GenerateAccessTokenParams struct {
 	privateKey ed25519.PrivateKey
 	issuer     string
 	userID     ulid.ULID
+	roles      []string
 	expiry     time.Duration
 }
 
+type AccessClaims struct {
+	Roles []string `json:"roles"`
+	jwt.RegisteredClaims
+}
+
 func GenerateAccessToken(params GenerateAccessTokenParams) (string, error) {
-	claims := jwt.RegisteredClaims{
-		Subject:   params.userID.String(),
-		Issuer:    params.issuer,
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(params.expiry)),
+	claims := AccessClaims{
+		Roles: params.roles,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   params.userID.String(),
+			Issuer:    params.issuer,
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(params.expiry)),
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
@@ -49,8 +58,8 @@ func GenerateRefreshToken(params GenerateRefreshTokenParams) (string, error) {
 	return token.SignedString(params.privateKey)
 }
 
-func ValidateToken(publicKey ed25519.PublicKey, token string) (*jwt.Token, *jwt.RegisteredClaims, error) {
-	claims := &jwt.RegisteredClaims{}
+func ValidateToken[T jwt.Claims](publicKey ed25519.PublicKey, token string, claims T) (*jwt.Token, T, error) {
+	var zero T
 	verifiedToken, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodEd25519); !ok {
 			return nil, apperror.NewUnauthorized("Invalid token")
@@ -58,12 +67,12 @@ func ValidateToken(publicKey ed25519.PublicKey, token string) (*jwt.Token, *jwt.
 		return publicKey, nil
 	})
 	if err != nil || !verifiedToken.Valid {
-		return nil, nil, apperror.NewUnauthorized("Invalid token")
+		return nil, zero, apperror.NewUnauthorized("Invalid token")
 	}
-	return verifiedToken, claims, nil
+	return verifiedToken, verifiedToken.Claims.(T), nil
 }
 
-func ValidateClaims(claims *jwt.RegisteredClaims, issuer string) error {
+func ValidateClaims(claims jwt.RegisteredClaims, issuer string) error {
 	if claims.Issuer != issuer {
 		return apperror.NewUnauthorized("Invalid token")
 	}

@@ -71,7 +71,7 @@ func newPasswordResetTokensTableImpl(schemaName, tableName, alias string) passwo
 		RevokedAtColumn = postgres.TimestampzColumn("revoked_at")
 		CreatedAtColumn = postgres.TimestampzColumn("created_at")
 		allColumns      = postgres.ColumnList{IDColumn, UserIDColumn, TokenHashColumn, ExpiresAtColumn, RevokedAtColumn, CreatedAtColumn}
-		mutableColumns  = postgres.ColumnList{IDColumn, UserIDColumn, TokenHashColumn, ExpiresAtColumn, RevokedAtColumn, CreatedAtColumn}
+		mutableColumns  = postgres.ColumnList{UserIDColumn, TokenHashColumn, ExpiresAtColumn, RevokedAtColumn, CreatedAtColumn}
 		defaultColumns  = postgres.ColumnList{}
 	)
 

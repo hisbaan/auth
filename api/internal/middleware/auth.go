@@ -6,6 +6,8 @@ import (
 	"crypto/ed25519"
 	"net/http"
 	"strings"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 const AuthContextKey = "jwtClaims"
@@ -23,7 +25,7 @@ func Auth(publicKey ed25519.PublicKey, issuer string) func(next http.Handler) ht
 				http.Error(w, "Invalid authorization header", http.StatusUnauthorized)
 				return
 			}
-			_, claims, err := auth.ValidateToken(publicKey, token)
+			_, claims, err := auth.ValidateToken[jwt.RegisteredClaims](publicKey, token, jwt.RegisteredClaims{})
 			if err != nil {
 				http.Error(w, "Invalid token", http.StatusUnauthorized)
 				return

@@ -11,11 +11,8 @@ import (
 	"time"
 )
 
-type PasswordResetTokens struct {
-	ID        []byte `sql:"primary_key"`
-	UserID    []byte
-	TokenHash []byte
-	ExpiresAt time.Time
-	RevokedAt *time.Time
+type Roles struct {
+	Name      string `sql:"primary_key"`
 	CreatedAt time.Time
+	UpdatedAt time.Time
 }

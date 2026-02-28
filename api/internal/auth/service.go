@@ -18,6 +18,7 @@ type AuthService struct {
 	emailService       *emails.EmailService
 
 	userRepo                   repositories.UserRepository
+	roleRepo                   repositories.RoleRepository
 	refreshTokenRepo           repositories.RefreshTokenRepository
 	passwordResetTokenRepo     repositories.PasswordResetTokenRepository
 	emailVerificationTokenRepo repositories.EmailVerificationTokenRepository
@@ -33,6 +34,7 @@ func NewAuthService(db *sql.DB, accessKey ed25519.PrivateKey, refreshKey ed25519
 		refreshTokenExpiry:         168 * time.Hour, // 7 days
 		emailService:               emailService,
 		userRepo:                   repositories.NewUserRepository(db),
+		roleRepo:                   repositories.NewRoleRepository(db),
 		refreshTokenRepo:           repositories.NewRefreshTokenRepository(db),
 		passwordResetTokenRepo:     repositories.NewPasswordResetTokenRepository(db),
 		emailVerificationTokenRepo: repositories.NewEmailVerificationTokenRepository(db),
