@@ -1,8 +1,8 @@
 type: http_request
 model: http_request
-id: rq_2BAmoGDPcX
-createdAt: 2026-02-13T05:54:36.316444329
-updatedAt: 2026-02-28T01:05:43.389130330
+id: rq_5KtEbJxFXj
+createdAt: 2026-02-28T00:28:06.606287888
+updatedAt: 2026-02-28T01:05:20.348179621
 workspaceId: wk_rqabM2anNY
 folderId: fl_Raco49H2dm
 authentication: {}
@@ -10,8 +10,8 @@ authenticationType: null
 body:
   text: |-
     {
-      "email": "hisbaan@gmail.com",
-      "password": "thisisatest123"
+      "token": "iBu40hhlGj8qeeNlJTGIMo6mIEdWuIbNIAsMsMLIicI=",
+      "new_password": "thisisatest123"
     }
 bodyType: application/json
 description: ''
@@ -19,9 +19,9 @@ headers:
 - enabled: true
   name: Content-Type
   value: application/json
-  id: gsAau7M5gn
+  id: GqIeaYWFi9
 method: POST
-name: localhost:3000/auth/login
+name: ''
 sortPriority: 1000.0
-url: localhost:3000/auth/login
+url: http://localhost:3000/auth/password-reset
 urlParameters: []

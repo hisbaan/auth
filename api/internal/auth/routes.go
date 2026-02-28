@@ -88,9 +88,21 @@ func Router(s *AuthService) http.Handler {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	r.Post("/reset-password", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
-		w.Write([]byte("Not yet implemented"))
+	r.Post("/password-reset", func(w http.ResponseWriter, r *http.Request) {
+		println("here")
+
+		var body PasswordResetParams
+		if err := httputil.ParseBody(w, r, &body); err != nil {
+			return
+		}
+
+		err := s.PasswordReset(body)
+		if err != nil {
+			httputil.HandleError(w, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 	})
 
 	r.Post("/verify-email", func(w http.ResponseWriter, r *http.Request) {

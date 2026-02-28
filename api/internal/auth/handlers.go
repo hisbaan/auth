@@ -255,6 +255,42 @@ func (s *AuthService) ForgotPassword(params ForgotPasswordParams) error {
 	return nil
 }
 
+type PasswordResetParams struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"new_password"`
+}
+
+func (s *AuthService) PasswordReset(params PasswordResetParams) error {
+	token, err := URLDecodeToken(params.Token)
+	if err != nil {
+		return apperror.NewBadRequest("Invalid token")
+	}
+
+	hashedToken := HashToken(token)
+	passwordResetToken, err := s.passwordResetTokenRepo.GetByHash(hashedToken)
+	if err != nil {
+		return err
+	}
+
+	tokenID := ulidutil.MustFromBytes(passwordResetToken.ID)
+	if err := s.passwordResetTokenRepo.Revoke(tokenID); err != nil {
+		return err
+	}
+
+	userID := ulidutil.MustFromBytes(passwordResetToken.UserID)
+
+	hashedPassword, err := HashPassword(params.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	if err := s.userRepo.SetPassword(userID, hashedPassword); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type VerifyEmailParams struct {
 	Token string `json:"token"`
 }
@@ -262,7 +298,7 @@ type VerifyEmailParams struct {
 func (s *AuthService) VerifyEmail(params VerifyEmailParams) error {
 	token, err := URLDecodeToken(params.Token)
 	if err != nil {
-		return apperror.NewBadRequest("Invalid token format")
+		return apperror.NewBadRequest("Invalid token")
 	}
 
 	hashedToken := HashToken(token)
