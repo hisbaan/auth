@@ -1,8 +1,8 @@
 package users
 
 import (
-	"auth/internal/httputil"
 	"auth/internal/middleware"
+	"auth/internal/utils/httputil"
 	"crypto/ed25519"
 	"net/http"
 

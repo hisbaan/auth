@@ -3,8 +3,8 @@ package auth
 import (
 	"auth/internal/apperror"
 	"auth/internal/jet/postgres/public/model"
-	"auth/internal/ulidutil"
 	"auth/internal/utils"
+	"auth/internal/utils/ulidutil"
 	"crypto/ed25519"
 	"time"
 

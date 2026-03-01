@@ -4,7 +4,7 @@ import (
 	"auth/internal/apperror"
 	"auth/internal/auth"
 	"auth/internal/jet/postgres/public/model"
-	"auth/internal/ulidutil"
+	"auth/internal/utils/ulidutil"
 	"time"
 
 	"github.com/oklog/ulid/v2"

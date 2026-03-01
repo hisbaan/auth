@@ -2,7 +2,7 @@ package admin
 
 import (
 	"auth/internal/apperror"
-	"auth/internal/ulidutil"
+	"auth/internal/utils/ulidutil"
 	"time"
 
 	"github.com/oklog/ulid/v2"

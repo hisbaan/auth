@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"auth/internal/httputil"
+	"auth/internal/utils/httputil"
 	"net"
 	"net/http"
 
