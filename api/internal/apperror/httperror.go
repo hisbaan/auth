@@ -3,6 +3,8 @@ package apperror
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/lib/pq"
 )
 
 // HTTPError is the interface for errors that can be converted to HTTP status codes
@@ -126,4 +128,30 @@ func NewServiceUnavailable(msg string) HTTPError {
 		msg = fmt.Sprintf("Service Unavailable: %s", msg)
 	}
 	return &Error{Status: http.StatusServiceUnavailable, Message: msg}
+}
+
+func FromPGError(err error) error {
+	if pqErr, ok := err.(*pq.Error); ok {
+		switch pqErr.Code {
+		case "23503": // foreign_key_violation
+			return NewNotFound("Referenced resource not found")
+		case "23505": // unique_violation
+			return NewConflict("Resource already exists")
+		case "23502": // not_null_violation
+			return NewBadRequest("Required field missing")
+		case "22001": // string_data_right_truncation
+			return NewBadRequest("String too long")
+		case "22003": // numeric_value_out_of_range
+			return NewBadRequest("Numeric value out of range")
+		case "22012": // division_by_zero
+			return NewBadRequest("Division by zero")
+		case "57014": // query_canceled
+			return NewServiceUnavailable("Query cancelled")
+		case "53300": // too_many_connections
+			return NewServiceUnavailable("Too many connections")
+		case "58030": // io_error
+			return NewInternalServerError("Database I/O error")
+		}
+	}
+	return NewInternalServerError("Database query error")
 }

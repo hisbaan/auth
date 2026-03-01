@@ -4,6 +4,7 @@ import (
 	"auth/internal/apperror"
 	"auth/internal/jet/postgres/public/model"
 	. "auth/internal/jet/postgres/public/table"
+	. "auth/internal/utils/postgres"
 	"database/sql"
 	"log"
 	"time"
@@ -130,4 +131,53 @@ func (r *UserRepository) WillConflict(user model.Users) (bool, error) {
 	}
 
 	return len(users) > 0, nil
+}
+
+func (r *UserRepository) List(limit int, cursor *ulid.ULID) ([]model.Users, error) {
+	query := Users.SELECT(Users.AllColumns).
+		ORDER_BY(Users.ID.DESC()).
+		LIMIT(int64(limit))
+
+	if cursor != nil {
+		query = query.WHERE(Users.ID.LT(Bytea(cursor.Bytes())))
+	}
+
+	var users []model.Users
+	err := query.Query(r.db, &users)
+	if err != nil {
+		log.Printf("[ERROR] List users failed: %v", err)
+		return nil, apperror.NewInternalServerError("Database query error")
+	}
+
+	return users, nil
+}
+
+type UserWithRoles struct {
+	model.Users
+	Roles []string
+}
+
+func (r *UserRepository) ListWithRoles(limit int, cursor *ulid.ULID) ([]UserWithRoles, error) {
+	query := SELECT(
+		Users.AllColumns,
+		SELECT(
+			ARRAY_AGG(UserRoles.Role),
+		).FROM(UserRoles).WHERE(UserRoles.UserID.EQ(Users.ID)).AS("roles"),
+	).
+		FROM(Users).
+		ORDER_BY(Users.ID.DESC()).
+		LIMIT(int64(limit))
+
+	if cursor != nil {
+		query = query.WHERE(Users.ID.LT(Bytea(cursor.Bytes())))
+	}
+
+	var results []UserWithRoles
+	err := query.Query(r.db, &results)
+	if err != nil {
+		log.Printf("[ERROR] ListWithRoles query failed: %v", err)
+		return nil, apperror.FromPGError(err)
+	}
+
+	return results, nil
 }

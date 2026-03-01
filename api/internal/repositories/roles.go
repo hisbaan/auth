@@ -20,6 +20,25 @@ func NewRoleRepository(db *sql.DB) RoleRepository {
 	return RoleRepository{db: db}
 }
 
+func (r *RoleRepository) GetByName(name string) (*model.Roles, error) {
+	query := Roles.SELECT(Roles.AllColumns).
+		WHERE(Roles.Name.EQ(String(name))).
+		LIMIT(1)
+
+	var roles []model.Roles
+	err := query.Query(r.db, &roles)
+	if err != nil {
+		log.Printf("[ERROR] GetByName query failed: %v", err)
+		return nil, apperror.NewInternalServerError("Database query error")
+	}
+
+	if len(roles) == 0 {
+		return nil, nil
+	}
+
+	return &roles[0], nil
+}
+
 func (r *RoleRepository) GetByUserID(id ulid.ULID) ([]model.Roles, error) {
 	query := Roles.SELECT(Roles.AllColumns).
 		FROM(Roles.INNER_JOIN(UserRoles, Roles.Name.EQ(UserRoles.Role))).
@@ -87,6 +106,22 @@ func (r *RoleRepository) CreateUserRole(userID ulid.ULID, roleName string) error
 	_, err := UserRoles.INSERT().MODEL(userRole).ON_CONFLICT().DO_NOTHING().Exec(r.db)
 	if err != nil {
 		log.Printf("[ERROR] CreateUserRole failed: %v", err)
+		return apperror.FromPGError(err)
+	}
+	return nil
+}
+
+func (r *RoleRepository) DeleteUserRole(userID ulid.ULID, roleName string) error {
+	_, err := UserRoles.DELETE().
+		WHERE(
+			AND(
+				UserRoles.UserID.EQ(Bytea(userID.Bytes())),
+				UserRoles.Role.EQ(String(roleName)),
+			),
+		).
+		Exec(r.db)
+	if err != nil {
+		log.Printf("[ERROR] DeleteUserRole failed: %v", err)
 		return apperror.NewInternalServerError("Database query error")
 	}
 	return nil

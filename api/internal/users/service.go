@@ -19,7 +19,7 @@ type UsersService struct {
 	emailVerificationTokenRepo repositories.EmailVerificationTokenRepository
 }
 
-func NewUsersService(db *sql.DB, jwtAccessKey ed25519.PrivateKey, jwtRefreshKey ed25519.PrivateKey, issuer string, emailService *emails.EmailService) (*UsersService, error) {
+func NewUsersService(db *sql.DB, jwtAccessKey ed25519.PrivateKey, jwtRefreshKey ed25519.PrivateKey, issuer string, emailService *emails.EmailService) *UsersService {
 	return &UsersService{
 		db:                         db,
 		jwtAccessKey:               jwtAccessKey,
@@ -29,5 +29,5 @@ func NewUsersService(db *sql.DB, jwtAccessKey ed25519.PrivateKey, jwtRefreshKey 
 		userRepo:                   repositories.NewUserRepository(db),
 		refreshTokenRepo:           repositories.NewRefreshTokenRepository(db),
 		emailVerificationTokenRepo: repositories.NewEmailVerificationTokenRepository(db),
-	}, nil
+	}
 }

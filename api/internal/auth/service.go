@@ -24,7 +24,7 @@ type AuthService struct {
 	emailVerificationTokenRepo repositories.EmailVerificationTokenRepository
 }
 
-func NewAuthService(db *sql.DB, accessKey ed25519.PrivateKey, refreshKey ed25519.PrivateKey, issuer string, emailService *emails.EmailService) (*AuthService, error) {
+func NewAuthService(db *sql.DB, accessKey ed25519.PrivateKey, refreshKey ed25519.PrivateKey, issuer string, emailService *emails.EmailService) *AuthService {
 	return &AuthService{
 		db:                         db,
 		jwtAccessKey:               accessKey,
@@ -38,5 +38,5 @@ func NewAuthService(db *sql.DB, accessKey ed25519.PrivateKey, refreshKey ed25519
 		refreshTokenRepo:           repositories.NewRefreshTokenRepository(db),
 		passwordResetTokenRepo:     repositories.NewPasswordResetTokenRepository(db),
 		emailVerificationTokenRepo: repositories.NewEmailVerificationTokenRepository(db),
-	}, nil
+	}
 }

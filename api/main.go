@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"auth/internal/admin"
 	"auth/internal/auth"
 	"auth/internal/emails"
 	"auth/internal/users"
@@ -90,17 +91,14 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
 
-	authService, err := auth.NewAuthService(db, accessKey, refreshKey, cfg.IssuerUrl, emailService)
-	if err != nil {
-		log.Fatalf("failed to create auth service: %v", err)
-	}
+	authService := auth.NewAuthService(db, accessKey, refreshKey, cfg.IssuerUrl, emailService)
 	r.Mount("/auth", auth.Router(authService))
 
-	usersService, err := users.NewUsersService(db, accessKey, refreshKey, cfg.IssuerUrl, emailService)
-	if err != nil {
-		log.Fatalf("failed to create users service: %v", err)
-	}
+	usersService := users.NewUsersService(db, accessKey, refreshKey, cfg.IssuerUrl, emailService)
 	r.Mount("/users", users.Router(usersService))
+
+	adminService := admin.NewAdminService(db)
+	r.Mount("/admin", admin.Router(adminService, accessKey.Public().(ed25519.PublicKey), cfg.IssuerUrl))
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	log.Fatal(http.ListenAndServe(":"+cfg.Port, r))
