@@ -3,7 +3,7 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-.PHONY: jet db-generate db-migrate db-status db-hash db-inspect db-validate build run dev clean
+.PHONY: jet db-generate db-migrate db-status db-hash db-inspect db-validate build run dev clean swagger
 
 # Generate go-jet SQL builder code from database
 jet:
@@ -52,3 +52,8 @@ dev:
 
 clean:
 	rm -rf ./bin/*
+
+# Generate OpenAPI/Swagger documentation
+# Note: --v3.1 flag has a bug with --parseFuncBody (see swaggo/swag#2139)
+swagger:
+	swag init -g main.go -o docs --parseInternal --parseFuncBody

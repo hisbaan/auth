@@ -53,6 +53,15 @@ func parseEd25519PrivateKey(pemContent string) (ed25519.PrivateKey, error) {
 	return edKey, nil
 }
 
+// @title auth
+// @version 0.0.1
+// @description api for auth.hisbaan.com
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+// TODO: Add response examples to API endpoints
+// TODO: Add request body examples to API endpoints
 func main() {
 	var cfg Config
 	err := env.Parse(&cfg)
