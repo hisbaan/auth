@@ -55,5 +55,7 @@ clean:
 
 # Generate OpenAPI/Swagger documentation
 # Note: --v3.1 flag has a bug with --parseFuncBody (see swaggo/swag#2139)
+# Using Swagger 2.0 then converting to OpenAPI 3.0 in the meantime
 swagger:
 	swag init -g main.go -o docs --parseInternal --parseFuncBody
+	go run ./cmd/convert-swagger/main.go docs/swagger.json docs/openapi.json
