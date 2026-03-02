@@ -144,12 +144,46 @@ definitions:
       username:
         type: string
     type: object
+  wellknown.JWK:
+    properties:
+      alg:
+        type: string
+      crv:
+        type: string
+      kid:
+        type: string
+      kty:
+        type: string
+      use:
+        type: string
+      x:
+        type: string
+    type: object
+  wellknown.JWKS:
+    properties:
+      keys:
+        items:
+          $ref: '#/definitions/wellknown.JWK'
+        type: array
+    type: object
 info:
   contact: {}
   description: api for auth.hisbaan.com
   title: auth
   version: 0.0.1
 paths:
+  /.well-known/jwks.json:
+    get:
+      description: Returns the JSON Web Key Set (JWKS) containing public keys for
+        verifying JWT tokens
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/wellknown.JWKS'
+      summary: Get JWKS
+      tags:
+      - wellknown
   /admin/users:
     get:
       description: Returns a paginated list of users (admin only)

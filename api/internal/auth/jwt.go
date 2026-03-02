@@ -12,6 +12,7 @@ import (
 
 type GenerateAccessTokenParams struct {
 	privateKey ed25519.PrivateKey
+	keyID      string
 	issuer     string
 	userID     ulid.ULID
 	roles      []string
@@ -35,11 +36,13 @@ func GenerateAccessToken(params GenerateAccessTokenParams) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
+	token.Header["kid"] = params.keyID
 	return token.SignedString(params.privateKey)
 }
 
 type GenerateRefreshTokenParams struct {
 	privateKey ed25519.PrivateKey
+	keyID      string
 	issuer     string
 	userID     ulid.ULID
 	tokenID    ulid.ULID
@@ -56,6 +59,7 @@ func GenerateRefreshToken(params GenerateRefreshTokenParams) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
+	token.Header["kid"] = params.keyID
 	return token.SignedString(params.privateKey)
 }
 

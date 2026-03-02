@@ -14,6 +14,7 @@ import (
 	"auth/internal/auth"
 	"auth/internal/emails"
 	"auth/internal/users"
+	"auth/internal/wellknown"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/go-chi/chi/v5"
@@ -26,6 +27,8 @@ type Config struct {
 	Port             string `env:"PORT,required"`
 	JWTAccessKeyPEM  string `env:"JWT_ACCESS_KEY_FILE,file,required"`
 	JWTRefreshKeyPEM string `env:"JWT_REFRESH_KEY_FILE,file,required"`
+	JWTAccessKeyID   string `env:"JWT_ACCESS_KEY_ID,required"`
+	JWTRefreshKeyID  string `env:"JWT_REFRESH_KEY_ID,required"`
 	IssuerUrl        string `env:"ISSUER_URL,required"`
 	ResendAPIKey     string `env:"RESEND_API_KEY,required"`
 	FromEmail        string `env:"FROM_EMAIL,required"`
@@ -100,7 +103,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
 
-	authService := auth.NewAuthService(db, accessKey, refreshKey, cfg.IssuerUrl, emailService)
+	authService := auth.NewAuthService(db, accessKey, refreshKey, cfg.JWTAccessKeyID, cfg.JWTRefreshKeyID, cfg.IssuerUrl, emailService)
 	r.Mount("/auth", auth.Router(authService))
 
 	usersService := users.NewUsersService(db, accessKey, refreshKey, cfg.IssuerUrl, emailService)
@@ -108,6 +111,14 @@ func main() {
 
 	adminService := admin.NewAdminService(db)
 	r.Mount("/admin", admin.Router(adminService, accessKey.Public().(ed25519.PublicKey), cfg.IssuerUrl))
+
+	wellknownService := wellknown.NewWellKnownService(
+		accessKey.Public().(ed25519.PublicKey),
+		refreshKey.Public().(ed25519.PublicKey),
+		cfg.JWTAccessKeyID,
+		cfg.JWTRefreshKeyID,
+	)
+	r.Mount("/.well-known", wellknown.Router(wellknownService))
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	log.Fatal(http.ListenAndServe(":"+cfg.Port, r))

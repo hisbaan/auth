@@ -12,6 +12,8 @@ type AuthService struct {
 	db                 *sql.DB
 	jwtAccessKey       ed25519.PrivateKey
 	jwtRefreshKey      ed25519.PrivateKey
+	jwtAccessKeyID     string
+	jwtRefreshKeyID    string
 	issuer             string
 	accessTokenExpiry  time.Duration
 	refreshTokenExpiry time.Duration
@@ -24,11 +26,13 @@ type AuthService struct {
 	emailVerificationTokenRepo repositories.EmailVerificationTokenRepository
 }
 
-func NewAuthService(db *sql.DB, accessKey ed25519.PrivateKey, refreshKey ed25519.PrivateKey, issuer string, emailService *emails.EmailService) *AuthService {
+func NewAuthService(db *sql.DB, accessKey ed25519.PrivateKey, refreshKey ed25519.PrivateKey, accessKeyID string, refreshKeyID string, issuer string, emailService *emails.EmailService) *AuthService {
 	return &AuthService{
 		db:                         db,
 		jwtAccessKey:               accessKey,
 		jwtRefreshKey:              refreshKey,
+		jwtAccessKeyID:             accessKeyID,
+		jwtRefreshKeyID:            refreshKeyID,
 		issuer:                     issuer,
 		accessTokenExpiry:          15 * time.Minute,
 		refreshTokenExpiry:         168 * time.Hour, // 7 days

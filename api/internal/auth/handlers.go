@@ -101,6 +101,7 @@ func (s *AuthService) Login(params LoginParams, ip string, userAgent string) (Lo
 
 	accessToken, err := GenerateAccessToken(GenerateAccessTokenParams{
 		privateKey: s.jwtAccessKey,
+		keyID:      s.jwtAccessKeyID,
 		issuer:     s.issuer,
 		userID:     ulidutil.MustFromBytes(user.ID),
 		roles:      utils.Map(roles, func(role model.Roles) string { return role.Name }),
@@ -127,6 +128,7 @@ func (s *AuthService) Login(params LoginParams, ip string, userAgent string) (Lo
 
 	refreshToken, err := GenerateRefreshToken(GenerateRefreshTokenParams{
 		privateKey: s.jwtRefreshKey,
+		keyID:      s.jwtRefreshKeyID,
 		issuer:     s.issuer,
 		userID:     userID,
 		tokenID:    ulidutil.MustFromBytes(refreshTokenModel.ID),
@@ -193,6 +195,7 @@ func (s *AuthService) Refresh(params RefreshParams, ip string, userAgent string)
 	}
 	accessToken, err := GenerateAccessToken(GenerateAccessTokenParams{
 		privateKey: s.jwtAccessKey,
+		keyID:      s.jwtAccessKeyID,
 		issuer:     s.issuer,
 		userID:     userID,
 		roles:      utils.Map(roles, func(role model.Roles) string { return role.Name }),
@@ -220,6 +223,7 @@ func (s *AuthService) Refresh(params RefreshParams, ip string, userAgent string)
 
 	newRefreshToken, err := GenerateRefreshToken(GenerateRefreshTokenParams{
 		privateKey: s.jwtRefreshKey,
+		keyID:      s.jwtRefreshKeyID,
 		issuer:     s.issuer,
 		userID:     userID,
 		tokenID:    ulidutil.MustFromBytes(newRefreshTokenModel.ID),

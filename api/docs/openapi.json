@@ -225,6 +225,40 @@
           }
         },
         "type": "object"
+      },
+      "wellknown.JWK": {
+        "properties": {
+          "alg": {
+            "type": "string"
+          },
+          "crv": {
+            "type": "string"
+          },
+          "kid": {
+            "type": "string"
+          },
+          "kty": {
+            "type": "string"
+          },
+          "use": {
+            "type": "string"
+          },
+          "x": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "wellknown.JWKS": {
+        "properties": {
+          "keys": {
+            "items": {
+              "$ref": "#/components/schemas/wellknown.JWK"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -244,6 +278,27 @@
   },
   "openapi": "3.0.3",
   "paths": {
+    "/.well-known/jwks.json": {
+      "get": {
+        "description": "Returns the JSON Web Key Set (JWKS) containing public keys for verifying JWT tokens",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/wellknown.JWKS"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Get JWKS",
+        "tags": [
+          "wellknown"
+        ]
+      }
+    },
     "/admin/users": {
       "get": {
         "description": "Returns a paginated list of users (admin only)",
