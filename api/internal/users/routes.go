@@ -1,6 +1,7 @@
 package users
 
 import (
+	"auth/internal/auth"
 	"auth/internal/middleware"
 	"auth/internal/utils/httputil"
 	"auth/internal/utils/ulidutil"
@@ -8,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 func Router(s *UsersService) http.Handler {
@@ -23,7 +23,7 @@ func Router(s *UsersService) http.Handler {
 	//	@Failure		401
 	//	@Router			/users/me [get]
 	r.Get("/me", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*jwt.RegisteredClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*auth.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -50,7 +50,7 @@ func Router(s *UsersService) http.Handler {
 	//	@Failure		409
 	//	@Router			/users/me [put]
 	r.Put("/me", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*jwt.RegisteredClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*auth.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -80,7 +80,7 @@ func Router(s *UsersService) http.Handler {
 	//	@Failure		401
 	//	@Router			/users/me/password [post]
 	r.Post("/me/password", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*jwt.RegisteredClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*auth.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -107,7 +107,7 @@ func Router(s *UsersService) http.Handler {
 	//	@Failure		401
 	//	@Router			/users/me [delete]
 	r.Delete("/me", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*jwt.RegisteredClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*auth.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)

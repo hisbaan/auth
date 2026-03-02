@@ -6,8 +6,6 @@ import (
 	"crypto/ed25519"
 	"net/http"
 	"strings"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
 const AuthContextKey = "jwtClaims"
@@ -15,23 +13,32 @@ const AuthContextKey = "jwtClaims"
 func Auth(publicKey ed25519.PublicKey, issuer string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var token string
+
 			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
+			if authHeader != "" {
+				token = strings.TrimPrefix(authHeader, "Bearer ")
+				if token == authHeader {
+					http.Error(w, "Invalid authorization header", http.StatusUnauthorized)
+					return
+				}
+			} else {
+				cookie, err := r.Cookie("access_token")
+				if err != nil || cookie.Value == "" {
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					return
+				}
+				token = cookie.Value
 			}
-			token := strings.TrimPrefix(authHeader, "Bearer ")
-			if token == authHeader {
-				http.Error(w, "Invalid authorization header", http.StatusUnauthorized)
-				return
-			}
-			_, claims, err := auth.ValidateToken[jwt.RegisteredClaims](publicKey, token, jwt.RegisteredClaims{})
+
+			_, claims, err := auth.ValidateToken[*auth.AccessClaims](publicKey, token, &auth.AccessClaims{})
 			if err != nil {
 				http.Error(w, "Invalid token", http.StatusUnauthorized)
 				return
 			}
-			if err = auth.ValidateClaims(claims, issuer); err != nil {
+			if err = auth.ValidateClaims(claims.RegisteredClaims, issuer); err != nil {
 				http.Error(w, "Invalid token", http.StatusUnauthorized)
+				return
 			}
 
 			ctx := context.WithValue(r.Context(), AuthContextKey, claims)

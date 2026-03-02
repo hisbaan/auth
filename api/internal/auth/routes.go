@@ -1,12 +1,75 @@
 package auth
 
 import (
+	"auth/internal/apperror"
 	"auth/internal/utils/httputil"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
+
+const (
+	AccessTokenCookieName  = "access_token"
+	RefreshTokenCookieName = "refresh_token"
+)
+
+func (s *AuthService) setAuthCookies(w http.ResponseWriter, accessToken string, refreshToken string) {
+	httpOnly := true
+	sameSite := http.SameSiteLaxMode
+	secure := s.cookieDomain != "localhost"
+
+	accessCookie := http.Cookie{
+		Name:     AccessTokenCookieName,
+		Value:    accessToken,
+		HttpOnly: httpOnly,
+		Secure:   secure,
+		SameSite: sameSite,
+		Domain:   s.cookieDomain,
+		Path:     "/",
+		Expires:  time.Now().Add(15 * time.Minute),
+	}
+	http.SetCookie(w, &accessCookie)
+
+	refreshCookie := http.Cookie{
+		Name:     RefreshTokenCookieName,
+		Value:    refreshToken,
+		HttpOnly: httpOnly,
+		Secure:   secure,
+		SameSite: sameSite,
+		Domain:   s.cookieDomain,
+		Path:     "/",
+		Expires:  time.Now().Add(168 * time.Hour),
+	}
+	http.SetCookie(w, &refreshCookie)
+}
+
+func (s *AuthService) clearAuthCookies(w http.ResponseWriter) {
+	accessCookie := http.Cookie{
+		Name:     AccessTokenCookieName,
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Domain:   s.cookieDomain,
+		Path:     "/",
+		Expires:  time.Now().Add(-1 * time.Hour),
+	}
+	http.SetCookie(w, &accessCookie)
+
+	refreshCookie := http.Cookie{
+		Name:     RefreshTokenCookieName,
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Domain:   s.cookieDomain,
+		Path:     "/",
+		Expires:  time.Now().Add(-1 * time.Hour),
+	}
+	http.SetCookie(w, &refreshCookie)
+}
 
 func Router(s *AuthService) http.Handler {
 	r := chi.NewRouter()
@@ -66,6 +129,8 @@ func Router(s *AuthService) http.Handler {
 			return
 		}
 
+		s.setAuthCookies(w, loginResponse.AccessToken, loginResponse.RefreshToken)
+
 		httputil.JSONResponse(w, http.StatusOK, loginResponse)
 	})
 
@@ -84,6 +149,18 @@ func Router(s *AuthService) http.Handler {
 			return
 		}
 
+		if body.RefreshToken == "" {
+			cookie, err := r.Cookie(RefreshTokenCookieName)
+			if err == nil && cookie != nil {
+				body.RefreshToken = cookie.Value
+			}
+		}
+
+		if body.RefreshToken == "" {
+			httputil.HandleError(w, apperror.NewBadRequest("Refresh token is required"))
+			return
+		}
+
 		ip := r.RemoteAddr
 		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
 			ip = forwarded
@@ -99,7 +176,19 @@ func Router(s *AuthService) http.Handler {
 			return
 		}
 
+		s.setAuthCookies(w, refreshResponse.AccessToken, refreshResponse.RefreshToken)
+
 		httputil.JSONResponse(w, http.StatusOK, refreshResponse)
+	})
+
+	//	@Summary		Logout user
+	//	@Description	Clears authentication cookies
+	//	@Tags			auth
+	//	@Success		204
+	//	@Router			/auth/logout [post]
+	r.Post("/logout", func(w http.ResponseWriter, r *http.Request) {
+		s.clearAuthCookies(w)
+		w.WriteHeader(http.StatusNoContent)
 	})
 
 	//	@Summary		Request password reset

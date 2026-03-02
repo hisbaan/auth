@@ -13,6 +13,7 @@ import (
 	"auth/internal/admin"
 	"auth/internal/auth"
 	"auth/internal/emails"
+	internalMiddleware "auth/internal/middleware"
 	"auth/internal/users"
 	"auth/internal/wellknown"
 
@@ -35,6 +36,7 @@ type Config struct {
 	FrontendURL      string `env:"FRONTEND_URL,required"`
 	ServiceName      string `env:"SERVICE_NAME,required"`
 	SupportEmail     string `env:"SUPPORT_EMAIL,required"`
+	CookieDomain     string `env:"COOKIE_DOMAIN,required"`
 }
 
 func parseEd25519PrivateKey(pemContent string) (ed25519.PrivateKey, error) {
@@ -56,13 +58,14 @@ func parseEd25519PrivateKey(pemContent string) (ed25519.PrivateKey, error) {
 	return edKey, nil
 }
 
-// @title auth
-// @version 0.0.1
-// @description api for auth.hisbaan.com
-// @securityDefinitions.apikey BearerAuth
-// @in header
-// @name Authorization
-// @description Type "Bearer" followed by a space and JWT token.
+//	@title						auth
+//	@version					0.0.1
+//	@description				api for auth.hisbaan.com
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
+//	@description				Type "Bearer" followed by a space and JWT token.
+//
 // TODO: Add response examples to API endpoints
 // TODO: Add request body examples to API endpoints
 func main() {
@@ -102,8 +105,9 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(internalMiddleware.CORS())
 
-	authService := auth.NewAuthService(db, accessKey, refreshKey, cfg.JWTAccessKeyID, cfg.JWTRefreshKeyID, cfg.IssuerUrl, emailService)
+	authService := auth.NewAuthService(db, accessKey, refreshKey, cfg.JWTAccessKeyID, cfg.JWTRefreshKeyID, cfg.IssuerUrl, emailService, cfg.CookieDomain)
 	r.Mount("/auth", auth.Router(authService))
 
 	usersService := users.NewUsersService(db, accessKey, refreshKey, cfg.IssuerUrl, emailService)

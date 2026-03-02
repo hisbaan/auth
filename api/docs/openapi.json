@@ -550,6 +550,20 @@
         ]
       }
     },
+    "/auth/logout": {
+      "post": {
+        "description": "Clears authentication cookies",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "Logout user",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/auth/password-reset": {
       "post": {
         "description": "Resets user password using a valid reset token",

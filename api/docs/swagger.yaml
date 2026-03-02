@@ -336,6 +336,15 @@ paths:
       summary: Login user
       tags:
       - auth
+  /auth/logout:
+    post:
+      description: Clears authentication cookies
+      responses:
+        "204":
+          description: No Content
+      summary: Logout user
+      tags:
+      - auth
   /auth/password-reset:
     post:
       consumes:
