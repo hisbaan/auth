@@ -195,6 +195,12 @@
           "id": {
             "type": "string"
           },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "updated_at": {
             "type": "string"
           },

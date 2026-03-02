@@ -4,6 +4,7 @@ import (
 	"auth/internal/apperror"
 	"auth/internal/auth"
 	"auth/internal/jet/postgres/public/model"
+	"auth/internal/utils"
 	"auth/internal/utils/ulidutil"
 	"time"
 
@@ -15,6 +16,7 @@ type GetUserResponse struct {
 	Email         string    `json:"email"`
 	Username      string    `json:"username"`
 	EmailVerified bool      `json:"email_verified"`
+	Roles         []string  `json:"roles"`
 	UpdatedAt     time.Time `json:"updated_at"`
 	CreatedAt     time.Time `json:"created_at"`
 }
@@ -25,11 +27,17 @@ func (s *UsersService) GetUser(userID ulid.ULID) (GetUserResponse, error) {
 		return GetUserResponse{}, err
 	}
 
+	roles, err := s.roleRepo.GetByUserID(userID)
+	if err != nil {
+		return GetUserResponse{}, err
+	}
+
 	return GetUserResponse{
 		ID:            ulidutil.ToPrefixed("user", userID),
 		Email:         user.Email,
 		Username:      user.Username,
 		EmailVerified: user.EmailVerified,
+		Roles:         utils.Map(roles, func(role model.Roles) string { return role.Name }),
 		CreatedAt:     user.CreatedAt,
 		UpdatedAt:     user.UpdatedAt,
 	}, nil
