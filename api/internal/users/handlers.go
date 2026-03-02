@@ -10,10 +10,6 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-type GetUserParams struct {
-	userID ulid.ULID
-}
-
 type GetUserResponse struct {
 	ID            string    `json:"id"`
 	Email         string    `json:"email"`

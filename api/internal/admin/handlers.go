@@ -38,7 +38,7 @@ func (s *AdminService) ListUsers(params ListUsersParams) (ListUsersResponse, err
 
 	var cursor *ulid.ULID
 	if params.Cursor != "" {
-		c, err := ulid.Parse(params.Cursor)
+		c, err := ulidutil.FromPrefixed("user", params.Cursor)
 		if err != nil {
 			return ListUsersResponse{}, apperror.NewBadRequest("Invalid cursor")
 		}
@@ -60,7 +60,7 @@ func (s *AdminService) ListUsers(params ListUsersParams) (ListUsersResponse, err
 		userID := ulidutil.MustFromBytes(user.ID)
 
 		result[i] = UserWithMetadata{
-			ID:            userID.String(),
+			ID:            ulidutil.ToPrefixed("user", userID),
 			Email:         user.Email,
 			Username:      user.Username,
 			EmailVerified: user.EmailVerified,
@@ -73,7 +73,7 @@ func (s *AdminService) ListUsers(params ListUsersParams) (ListUsersResponse, err
 	var nextCursor string
 	if hasMore && len(users) > 0 {
 		lastUser := users[len(users)-1]
-		nextCursor = ulidutil.MustFromBytes(lastUser.ID).String()
+		nextCursor = ulidutil.ToPrefixed("user", ulidutil.MustFromBytes(lastUser.ID))
 	}
 
 	return ListUsersResponse{
@@ -109,7 +109,7 @@ func (s *AdminService) GetUser(userID ulid.ULID) (GetUserResponse, error) {
 	}
 
 	return GetUserResponse{
-		ID:            userID.String(),
+		ID:            ulidutil.ToPrefixed("user", userID),
 		Email:         user.Email,
 		Username:      user.Username,
 		EmailVerified: user.EmailVerified,
@@ -120,14 +120,22 @@ func (s *AdminService) GetUser(userID ulid.ULID) (GetUserResponse, error) {
 }
 
 type UpdateUserRoleParams struct {
-	UserID ulid.ULID `json:"user_id"`
-	Role   string    `json:"role"`
+	UserID string `json:"user_id"`
+	Role   string `json:"role"`
 }
 
 func (s *AdminService) AddUserRole(params UpdateUserRoleParams) error {
-	return s.roleRepo.CreateUserRole(params.UserID, params.Role)
+	userID, err := ulidutil.FromPrefixed("user", params.UserID)
+	if err != nil {
+		return apperror.NewBadRequest("Invalid user ID")
+	}
+	return s.roleRepo.CreateUserRole(userID, params.Role)
 }
 
 func (s *AdminService) RemoveUserRole(params UpdateUserRoleParams) error {
-	return s.roleRepo.DeleteUserRole(params.UserID, params.Role)
+	userID, err := ulidutil.FromPrefixed("user", params.UserID)
+	if err != nil {
+		return apperror.NewBadRequest("Invalid user ID")
+	}
+	return s.roleRepo.DeleteUserRole(userID, params.Role)
 }

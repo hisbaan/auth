@@ -163,7 +163,7 @@ func (s *AuthService) Refresh(params RefreshParams, ip string, userAgent string)
 		return RefreshResponse{}, err
 	}
 
-	tokenID, err := ulid.Parse(claims.ID)
+	tokenID, err := ulidutil.FromPrefixed("token", claims.ID)
 	if err != nil {
 		return RefreshResponse{}, apperror.NewBadRequest("Invalid token ID format")
 	}

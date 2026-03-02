@@ -2,6 +2,7 @@ package auth
 
 import (
 	"auth/internal/apperror"
+	"auth/internal/utils/ulidutil"
 	"crypto/ed25519"
 	"time"
 
@@ -26,7 +27,7 @@ func GenerateAccessToken(params GenerateAccessTokenParams) (string, error) {
 	claims := AccessClaims{
 		Roles: params.roles,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   params.userID.String(),
+			Subject:   ulidutil.ToPrefixed("user", params.userID),
 			Issuer:    params.issuer,
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(params.expiry)),
@@ -47,8 +48,8 @@ type GenerateRefreshTokenParams struct {
 
 func GenerateRefreshToken(params GenerateRefreshTokenParams) (string, error) {
 	claims := jwt.RegisteredClaims{
-		ID:        params.tokenID.String(),
-		Subject:   params.userID.String(),
+		ID:        ulidutil.ToPrefixed("token", params.tokenID),
+		Subject:   ulidutil.ToPrefixed("user", params.userID),
 		Issuer:    params.issuer,
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(params.expiry)),
