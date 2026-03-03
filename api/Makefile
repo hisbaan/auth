@@ -59,4 +59,4 @@ clean:
 swagger:
 	swag init -g main.go -o docs --parseInternal --parseFuncBody
 	go run ./cmd/convert-swagger/main.go docs/swagger.json docs/openapi.json
-	rm docs/swagger.json docs/swagger.yaml
+	rm docs/swagger.json docs/swagger.yaml docs/docs.go
