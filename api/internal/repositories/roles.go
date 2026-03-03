@@ -73,7 +73,7 @@ func (r *RoleRepository) Create(role model.Roles) error {
 	_, err := Roles.INSERT().MODEL(role).ON_CONFLICT().DO_NOTHING().Exec(r.db)
 	if err != nil {
 		log.Printf("[ERROR] Create role failed: %v", err)
-		return apperror.NewInternalServerError("Database query error")
+		return apperror.FromPGError(err)
 	}
 	return nil
 }
@@ -92,7 +92,7 @@ func (r *RoleRepository) Delete(name string) error {
 	_, err := Roles.DELETE().WHERE(Roles.Name.EQ(String(name))).Exec(r.db)
 	if err != nil {
 		log.Printf("[ERROR] Delete role failed: %v", err)
-		return apperror.NewInternalServerError("Database query error")
+		return apperror.FromPGError(err)
 	}
 	return nil
 }

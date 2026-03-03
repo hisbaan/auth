@@ -1,6 +1,14 @@
 {
   "components": {
     "schemas": {
+      "admin.CreateRoleParams": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "admin.GetUserResponse": {
         "properties": {
           "created_at": {
@@ -181,6 +189,17 @@
         },
         "type": "object"
       },
+      "roles.ListRolesResponse": {
+        "properties": {
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "users.GetUserResponse": {
         "properties": {
           "created_at": {
@@ -302,6 +321,85 @@
         "summary": "Get JWKS",
         "tags": [
           "wellknown"
+        ]
+      }
+    },
+    "/admin/roles": {
+      "post": {
+        "description": "Creates a new role (admin only)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/admin.CreateRoleParams"
+              }
+            }
+          },
+          "description": "Role details",
+          "required": true,
+          "x-originalParamName": "request"
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create role",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/roles/{name}": {
+      "delete": {
+        "description": "Deletes a role (admin only)",
+        "parameters": [
+          {
+            "description": "Role name",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Delete role",
+        "tags": [
+          "admin"
         ]
       }
     },
@@ -705,6 +803,27 @@
         "summary": "Verify email",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/roles": {
+      "get": {
+        "description": "Returns a list of all available roles",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/roles.ListRolesResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "List roles",
+        "tags": [
+          "roles"
         ]
       }
     },

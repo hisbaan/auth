@@ -14,6 +14,7 @@ import (
 	"auth/internal/auth"
 	"auth/internal/emails"
 	internalMiddleware "auth/internal/middleware"
+	"auth/internal/roles"
 	"auth/internal/users"
 	"auth/internal/wellknown"
 
@@ -112,6 +113,9 @@ func main() {
 
 	usersService := users.NewUsersService(db, accessKey, refreshKey, cfg.IssuerUrl, emailService)
 	r.Mount("/users", users.Router(usersService))
+
+	rolesService := roles.NewRolesService(db)
+	r.Mount("/roles", roles.Router(rolesService))
 
 	adminService := admin.NewAdminService(db)
 	r.Mount("/admin", admin.Router(adminService, accessKey.Public().(ed25519.PublicKey), cfg.IssuerUrl))

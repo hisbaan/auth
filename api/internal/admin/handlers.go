@@ -2,6 +2,7 @@ package admin
 
 import (
 	"auth/internal/apperror"
+	"auth/internal/jet/postgres/public/model"
 	"auth/internal/utils/ulidutil"
 	"time"
 
@@ -138,4 +139,23 @@ func (s *AdminService) RemoveUserRole(params UpdateUserRoleParams) error {
 		return apperror.NewBadRequest("Invalid user ID")
 	}
 	return s.roleRepo.DeleteUserRole(userID, params.Role)
+}
+
+type CreateRoleParams struct {
+	Name string `json:"name"`
+}
+
+func (s *AdminService) CreateRole(params CreateRoleParams) error {
+	role := model.Roles{
+		Name: params.Name,
+	}
+	return s.roleRepo.Create(role)
+}
+
+type DeleteRoleParams struct {
+	Name string `json:"name"`
+}
+
+func (s *AdminService) DeleteRole(params DeleteRoleParams) error {
+	return s.roleRepo.Delete(params.Name)
 }
