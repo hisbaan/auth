@@ -6,18 +6,14 @@ import (
 )
 
 type WellKnownService struct {
-	accessPublicKey  ed25519.PublicKey
-	refreshPublicKey ed25519.PublicKey
-	accessKeyID      string
-	refreshKeyID     string
+	publicKey ed25519.PublicKey
+	keyID     string
 }
 
-func NewWellKnownService(accessPublicKey ed25519.PublicKey, refreshPublicKey ed25519.PublicKey, accessKeyID string, refreshKeyID string) *WellKnownService {
+func NewWellKnownService(publicKey ed25519.PublicKey, keyID string) *WellKnownService {
 	return &WellKnownService{
-		accessPublicKey:  accessPublicKey,
-		refreshPublicKey: refreshPublicKey,
-		accessKeyID:      accessKeyID,
-		refreshKeyID:     refreshKeyID,
+		publicKey: publicKey,
+		keyID:     keyID,
 	}
 }
 
@@ -27,18 +23,10 @@ func (s *WellKnownService) GetJWKS() JWKS {
 			{
 				Kty: "OKP",
 				Use: "sig",
-				Kid: s.accessKeyID,
+				Kid: s.keyID,
 				Alg: "EdDSA",
 				Crv: "Ed25519",
-				X:   base64.RawURLEncoding.EncodeToString(s.accessPublicKey),
-			},
-			{
-				Kty: "OKP",
-				Use: "sig",
-				Kid: s.refreshKeyID,
-				Alg: "EdDSA",
-				Crv: "Ed25519",
-				X:   base64.RawURLEncoding.EncodeToString(s.refreshPublicKey),
+				X:   base64.RawURLEncoding.EncodeToString(s.publicKey),
 			},
 		},
 	}

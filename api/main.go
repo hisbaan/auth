@@ -27,10 +27,8 @@ import (
 type Config struct {
 	DatabaseUrl      string `env:"DATABASE_URL,required"`
 	Port             string `env:"PORT,required"`
-	JWTAccessKeyPEM  string `env:"JWT_ACCESS_KEY_FILE,file,required"`
-	JWTRefreshKeyPEM string `env:"JWT_REFRESH_KEY_FILE,file,required"`
-	JWTAccessKeyID   string `env:"JWT_ACCESS_KEY_ID,required"`
-	JWTRefreshKeyID  string `env:"JWT_REFRESH_KEY_ID,required"`
+	JWTSigningKeyPEM string `env:"JWT_SIGNING_KEY_FILE,file,required"`
+	JWTSigningKeyID  string `env:"JWT_SIGNING_KEY_ID,required"`
 	IssuerUrl        string `env:"ISSUER_URL,required"`
 	ResendAPIKey     string `env:"RESEND_API_KEY,required"`
 	FromEmail        string `env:"FROM_EMAIL,required"`
@@ -83,14 +81,10 @@ func main() {
 	}
 	defer db.Close()
 
-	// Parse Ed25519 private keys from PEM content
-	accessKey, err := parseEd25519PrivateKey(cfg.JWTAccessKeyPEM)
+	// Parse Ed25519 private key from PEM content
+	signingKey, err := parseEd25519PrivateKey(cfg.JWTSigningKeyPEM)
 	if err != nil {
-		log.Fatalf("failed to parse access key: %v", err)
-	}
-	refreshKey, err := parseEd25519PrivateKey(cfg.JWTRefreshKeyPEM)
-	if err != nil {
-		log.Fatalf("failed to parse refresh key: %v", err)
+		log.Fatalf("failed to parse signing key: %v", err)
 	}
 
 	// Setup resend
@@ -108,23 +102,21 @@ func main() {
 	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(internalMiddleware.CORS())
 
-	authService := auth.NewAuthService(db, accessKey, refreshKey, cfg.JWTAccessKeyID, cfg.JWTRefreshKeyID, cfg.IssuerUrl, emailService, cfg.CookieDomain)
+	authService := auth.NewAuthService(db, signingKey, cfg.JWTSigningKeyID, cfg.IssuerUrl, emailService, cfg.CookieDomain)
 	r.Mount("/auth", auth.Router(authService))
 
-	usersService := users.NewUsersService(db, accessKey, refreshKey, cfg.IssuerUrl, emailService)
+	usersService := users.NewUsersService(db, signingKey, cfg.IssuerUrl, emailService)
 	r.Mount("/users", users.Router(usersService))
 
 	rolesService := roles.NewRolesService(db)
 	r.Mount("/roles", roles.Router(rolesService))
 
 	adminService := admin.NewAdminService(db)
-	r.Mount("/admin", admin.Router(adminService, accessKey.Public().(ed25519.PublicKey), cfg.IssuerUrl))
+	r.Mount("/admin", admin.Router(adminService, signingKey.Public().(ed25519.PublicKey), cfg.IssuerUrl))
 
 	wellknownService := wellknown.NewWellKnownService(
-		accessKey.Public().(ed25519.PublicKey),
-		refreshKey.Public().(ed25519.PublicKey),
-		cfg.JWTAccessKeyID,
-		cfg.JWTRefreshKeyID,
+		signingKey.Public().(ed25519.PublicKey),
+		cfg.JWTSigningKeyID,
 	)
 	r.Mount("/.well-known", wellknown.Router(wellknownService))
 

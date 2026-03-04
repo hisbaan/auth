@@ -15,6 +15,10 @@ func RequireAdmin(issuer string) func(next http.Handler) http.Handler {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
+			if len(claims.Roles) == 0 {
+				http.Error(w, "Invalid token", http.StatusUnauthorized)
+				return
+			}
 
 			if !slices.Contains(claims.Roles, "admin") {
 				http.Error(w, "Forbidden", http.StatusForbidden)

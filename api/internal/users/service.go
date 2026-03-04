@@ -9,8 +9,7 @@ import (
 
 type UsersService struct {
 	db            *sql.DB
-	jwtAccessKey  ed25519.PrivateKey
-	jwtRefreshKey ed25519.PrivateKey
+	jwtSigningKey ed25519.PrivateKey
 	issuer        string
 	emailService  *emails.EmailService
 
@@ -20,11 +19,10 @@ type UsersService struct {
 	emailVerificationTokenRepo repositories.EmailVerificationTokenRepository
 }
 
-func NewUsersService(db *sql.DB, jwtAccessKey ed25519.PrivateKey, jwtRefreshKey ed25519.PrivateKey, issuer string, emailService *emails.EmailService) *UsersService {
+func NewUsersService(db *sql.DB, jwtSigningKey ed25519.PrivateKey, issuer string, emailService *emails.EmailService) *UsersService {
 	return &UsersService{
 		db:                         db,
-		jwtAccessKey:               jwtAccessKey,
-		jwtRefreshKey:              jwtRefreshKey,
+		jwtSigningKey:              jwtSigningKey,
 		issuer:                     issuer,
 		emailService:               emailService,
 		userRepo:                   repositories.NewUserRepository(db),

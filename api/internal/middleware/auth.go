@@ -40,6 +40,10 @@ func Auth(publicKey ed25519.PublicKey, issuer string) func(next http.Handler) ht
 				http.Error(w, "Invalid token", http.StatusUnauthorized)
 				return
 			}
+			if claims.TokenType != "access" {
+				http.Error(w, "Invalid token", http.StatusUnauthorized)
+				return
+			}
 
 			ctx := context.WithValue(r.Context(), AuthContextKey, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))

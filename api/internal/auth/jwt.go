@@ -20,13 +20,20 @@ type GenerateAccessTokenParams struct {
 }
 
 type AccessClaims struct {
-	Roles []string `json:"roles"`
+	TokenType string   `json:"token_type"`
+	Roles     []string `json:"roles"`
+	jwt.RegisteredClaims
+}
+
+type RefreshClaims struct {
+	TokenType string `json:"token_type"`
 	jwt.RegisteredClaims
 }
 
 func GenerateAccessToken(params GenerateAccessTokenParams) (string, error) {
 	claims := AccessClaims{
-		Roles: params.roles,
+		TokenType: "access",
+		Roles:     params.roles,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   ulidutil.ToPrefixed("user", params.userID),
 			Issuer:    params.issuer,
@@ -50,12 +57,15 @@ type GenerateRefreshTokenParams struct {
 }
 
 func GenerateRefreshToken(params GenerateRefreshTokenParams) (string, error) {
-	claims := jwt.RegisteredClaims{
-		ID:        ulidutil.ToPrefixed("token", params.tokenID),
-		Subject:   ulidutil.ToPrefixed("user", params.userID),
-		Issuer:    params.issuer,
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(params.expiry)),
+	claims := RefreshClaims{
+		TokenType: "refresh",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        ulidutil.ToPrefixed("token", params.tokenID),
+			Subject:   ulidutil.ToPrefixed("user", params.userID),
+			Issuer:    params.issuer,
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(params.expiry)),
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)

@@ -8,7 +8,6 @@ import (
 	"crypto/ed25519"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/oklog/ulid/v2"
 )
 
@@ -100,8 +99,8 @@ func (s *AuthService) Login(params LoginParams, ip string, userAgent string) (Lo
 	}
 
 	accessToken, err := GenerateAccessToken(GenerateAccessTokenParams{
-		privateKey: s.jwtAccessKey,
-		keyID:      s.jwtAccessKeyID,
+		privateKey: s.jwtSigningKey,
+		keyID:      s.jwtSigningKeyID,
 		issuer:     s.issuer,
 		userID:     ulidutil.MustFromBytes(user.ID),
 		roles:      utils.Map(roles, func(role model.Roles) string { return role.Name }),
@@ -127,8 +126,8 @@ func (s *AuthService) Login(params LoginParams, ip string, userAgent string) (Lo
 	}
 
 	refreshToken, err := GenerateRefreshToken(GenerateRefreshTokenParams{
-		privateKey: s.jwtRefreshKey,
-		keyID:      s.jwtRefreshKeyID,
+		privateKey: s.jwtSigningKey,
+		keyID:      s.jwtSigningKeyID,
 		issuer:     s.issuer,
 		userID:     userID,
 		tokenID:    ulidutil.MustFromBytes(refreshTokenModel.ID),
@@ -160,14 +159,20 @@ type RefreshResponse struct {
 }
 
 func (s *AuthService) Refresh(params RefreshParams, ip string, userAgent string) (RefreshResponse, error) {
-	_, claims, err := ValidateToken[jwt.RegisteredClaims](s.jwtRefreshKey.Public().(ed25519.PublicKey), params.RefreshToken, jwt.RegisteredClaims{})
+	_, claims, err := ValidateToken[*RefreshClaims](s.jwtSigningKey.Public().(ed25519.PublicKey), params.RefreshToken, &RefreshClaims{})
 	if err != nil {
+		return RefreshResponse{}, err
+	}
+	if claims.TokenType != "refresh" {
+		return RefreshResponse{}, apperror.NewUnauthorized("Invalid token")
+	}
+	if err := ValidateClaims(claims.RegisteredClaims, s.issuer); err != nil {
 		return RefreshResponse{}, err
 	}
 
 	tokenID, err := ulidutil.FromPrefixed("token", claims.ID)
 	if err != nil {
-		return RefreshResponse{}, apperror.NewBadRequest("Invalid token ID format")
+		return RefreshResponse{}, apperror.NewUnauthorized("Invalid token")
 	}
 
 	refreshToken, err := s.refreshTokenRepo.GetByID(tokenID)
@@ -194,8 +199,8 @@ func (s *AuthService) Refresh(params RefreshParams, ip string, userAgent string)
 		return RefreshResponse{}, err
 	}
 	accessToken, err := GenerateAccessToken(GenerateAccessTokenParams{
-		privateKey: s.jwtAccessKey,
-		keyID:      s.jwtAccessKeyID,
+		privateKey: s.jwtSigningKey,
+		keyID:      s.jwtSigningKeyID,
 		issuer:     s.issuer,
 		userID:     userID,
 		roles:      utils.Map(roles, func(role model.Roles) string { return role.Name }),
@@ -222,8 +227,8 @@ func (s *AuthService) Refresh(params RefreshParams, ip string, userAgent string)
 	}
 
 	newRefreshToken, err := GenerateRefreshToken(GenerateRefreshTokenParams{
-		privateKey: s.jwtRefreshKey,
-		keyID:      s.jwtRefreshKeyID,
+		privateKey: s.jwtSigningKey,
+		keyID:      s.jwtSigningKeyID,
 		issuer:     s.issuer,
 		userID:     userID,
 		tokenID:    ulidutil.MustFromBytes(newRefreshTokenModel.ID),
