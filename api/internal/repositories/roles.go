@@ -112,7 +112,7 @@ func (r *RoleRepository) CreateUserRole(userID ulid.ULID, roleName string) error
 }
 
 func (r *RoleRepository) DeleteUserRole(userID ulid.ULID, roleName string) error {
-	_, err := UserRoles.DELETE().
+	result, err := UserRoles.DELETE().
 		WHERE(
 			AND(
 				UserRoles.UserID.EQ(Bytea(userID.Bytes())),
@@ -123,6 +123,15 @@ func (r *RoleRepository) DeleteUserRole(userID ulid.ULID, roleName string) error
 	if err != nil {
 		log.Printf("[ERROR] DeleteUserRole failed: %v", err)
 		return apperror.NewInternalServerError("Database query error")
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("[ERROR] DeleteUserRole rows affected failed: %v", err)
+		return apperror.NewInternalServerError("Database query error")
+	}
+	if rowsAffected == 0 {
+		return apperror.NewNotFound("User role not found")
 	}
 	return nil
 }
