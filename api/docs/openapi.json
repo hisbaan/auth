@@ -52,12 +52,9 @@
         },
         "type": "object"
       },
-      "admin.UpdateUserRoleParams": {
+      "admin.UpdateUserRoleBody": {
         "properties": {
           "role": {
-            "type": "string"
-          },
-          "user_id": {
             "type": "string"
           }
         },
@@ -453,84 +450,6 @@
         ]
       }
     },
-    "/admin/users/roles": {
-      "delete": {
-        "description": "Removes a role from a user (admin only)",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/admin.UpdateUserRoleParams"
-              }
-            }
-          },
-          "description": "User role removal",
-          "required": true,
-          "x-originalParamName": "request"
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "Remove user role",
-        "tags": [
-          "admin"
-        ]
-      },
-      "post": {
-        "description": "Assigns a role to a user (admin only)",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/admin.UpdateUserRoleParams"
-              }
-            }
-          },
-          "description": "User role assignment",
-          "required": true,
-          "x-originalParamName": "request"
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "Add user role",
-        "tags": [
-          "admin"
-        ]
-      }
-    },
     "/admin/users/{id}": {
       "get": {
         "description": "Returns a user by their ID (admin only)",
@@ -575,6 +494,105 @@
           }
         ],
         "summary": "Get user by ID",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/users/{userId}/roles": {
+      "post": {
+        "description": "Assigns a role to a user (admin only)",
+        "parameters": [
+          {
+            "description": "User ID",
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/admin.UpdateUserRoleBody"
+              }
+            }
+          },
+          "description": "User role assignment",
+          "required": true,
+          "x-originalParamName": "request"
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Add user role",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/users/{userId}/roles/{role}": {
+      "delete": {
+        "description": "Removes a role from a user (admin only)",
+        "parameters": [
+          {
+            "description": "User ID",
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Role name",
+            "in": "path",
+            "name": "role",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Remove user role",
         "tags": [
           "admin"
         ]

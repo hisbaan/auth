@@ -28,7 +28,7 @@ func (s *AuthService) setAuthCookies(w http.ResponseWriter, accessToken string, 
 		SameSite: sameSite,
 		Domain:   s.cookieDomain,
 		Path:     "/",
-		Expires:  time.Now().Add(15 * time.Minute),
+		Expires:  time.Now().Add(time.Duration(15) * time.Minute),
 	}
 	http.SetCookie(w, &accessCookie)
 
@@ -40,7 +40,7 @@ func (s *AuthService) setAuthCookies(w http.ResponseWriter, accessToken string, 
 		SameSite: sameSite,
 		Domain:   s.cookieDomain,
 		Path:     "/",
-		Expires:  time.Now().Add(168 * time.Hour),
+		Expires:  time.Now().Add(time.Duration(168) * time.Hour),
 	}
 	http.SetCookie(w, &refreshCookie)
 }

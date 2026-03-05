@@ -125,6 +125,10 @@ type UpdateUserRoleParams struct {
 	Role   string `json:"role"`
 }
 
+type UpdateUserRoleBody struct {
+	Role string `json:"role"`
+}
+
 func (s *AdminService) AddUserRole(params UpdateUserRoleParams) error {
 	userID, err := ulidutil.FromPrefixed("user", params.UserID)
 	if err != nil {

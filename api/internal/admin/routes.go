@@ -78,19 +78,23 @@ func Router(s *AdminService, jwtAccessKey ed25519.PublicKey, issuer string) http
 	//	@Tags			admin
 	//	@Security		BearerAuth
 	//	@Accept			json
-	//	@Param			request	body	UpdateUserRoleParams	true	"User role assignment"
+	//	@Param			userId	path	string				true	"User ID"
+	//	@Param			request	body	UpdateUserRoleBody	true	"User role assignment"
 	//	@Success		204
 	//	@Failure		400
 	//	@Failure		401
 	//	@Failure		403
-	//	@Router			/admin/users/roles [post]
-	r.Post("/users/roles", func(w http.ResponseWriter, r *http.Request) {
-		var body UpdateUserRoleParams
+	//	@Router			/admin/users/{userId}/roles [post]
+	r.Post("/users/{userId}/roles", func(w http.ResponseWriter, r *http.Request) {
+		var body UpdateUserRoleBody
 		if err := httputil.ParseBody(w, r, &body); err != nil {
 			return
 		}
 
-		err := s.AddUserRole(body)
+		err := s.AddUserRole(UpdateUserRoleParams{
+			UserID: chi.URLParam(r, "userId"),
+			Role:   body.Role,
+		})
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
@@ -102,20 +106,18 @@ func Router(s *AdminService, jwtAccessKey ed25519.PublicKey, issuer string) http
 	//	@Description	Removes a role from a user (admin only)
 	//	@Tags			admin
 	//	@Security		BearerAuth
-	//	@Accept			json
-	//	@Param			request	body	UpdateUserRoleParams	true	"User role removal"
+	//	@Param			userId	path	string	true	"User ID"
+	//	@Param			role	path	string	true	"Role name"
 	//	@Success		204
 	//	@Failure		400
 	//	@Failure		401
 	//	@Failure		403
-	//	@Router			/admin/users/roles [delete]
-	r.Delete("/users/roles", func(w http.ResponseWriter, r *http.Request) {
-		var body UpdateUserRoleParams
-		if err := httputil.ParseBody(w, r, &body); err != nil {
-			return
-		}
-
-		err := s.RemoveUserRole(body)
+	//	@Router			/admin/users/{userId}/roles/{role} [delete]
+	r.Delete("/users/{userId}/roles/{role}", func(w http.ResponseWriter, r *http.Request) {
+		err := s.RemoveUserRole(UpdateUserRoleParams{
+			UserID: chi.URLParam(r, "userId"),
+			Role:   chi.URLParam(r, "role"),
+		})
 		if err != nil {
 			httputil.HandleError(w, err)
 			return

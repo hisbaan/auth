@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_YxnmnLUSo9
 createdAt: 2026-02-14T16:48:35.829739554
-updatedAt: 2026-02-23T15:49:51.214291
+updatedAt: 2026-03-05T00:16:52.304067767
 workspaceId: wk_rqabM2anNY
 folderId: fl_iqLoX9Msgo
 authentication: {}
@@ -22,6 +22,6 @@ headers:
   id: SMjUeNNwIU
 method: PUT
 name: ''
-sortPriority: 0.0
+sortPriority: 1000.0
 url: http://localhost:3000/users/me
 urlParameters: []

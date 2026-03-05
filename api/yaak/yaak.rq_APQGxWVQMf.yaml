@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_APQGxWVQMf
 createdAt: 2026-02-14T23:50:05.254645048
-updatedAt: 2026-02-15T05:06:35.760371295
+updatedAt: 2026-03-05T00:16:52.314512852
 workspaceId: wk_rqabM2anNY
 folderId: fl_iqLoX9Msgo
 authentication: {}
@@ -22,6 +22,6 @@ headers:
   id: 6sIPjTupTU
 method: POST
 name: ''
-sortPriority: 0.0
+sortPriority: 3000.0
 url: http://localhost:3000/users/me/password
 urlParameters: []

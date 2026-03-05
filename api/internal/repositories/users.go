@@ -4,12 +4,14 @@ import (
 	"auth/internal/apperror"
 	"auth/internal/jet/postgres/public/model"
 	. "auth/internal/jet/postgres/public/table"
+	"auth/internal/utils"
 	. "auth/internal/utils/postgres"
 	"database/sql"
 	"log"
 	"time"
 
 	. "github.com/go-jet/jet/v2/postgres"
+	"github.com/lib/pq"
 	"github.com/oklog/ulid/v2"
 )
 
@@ -158,13 +160,17 @@ type UserWithRoles struct {
 }
 
 func (r *UserRepository) ListWithRoles(limit int, cursor *ulid.ULID) ([]UserWithRoles, error) {
+	type UserWithRolesRaw struct {
+		model.Users
+		Roles pq.StringArray
+	}
+
 	query := SELECT(
 		Users.AllColumns,
-		SELECT(
-			ARRAY_AGG(UserRoles.Role),
-		).FROM(UserRoles).WHERE(UserRoles.UserID.EQ(Users.ID)).AS("roles"),
+		ARRAY_AGG_TEXT_NO_NULLS(UserRoles.Role).AS("userwithrolesraw.roles"),
 	).
-		FROM(Users).
+		FROM(Users.LEFT_JOIN(UserRoles, UserRoles.UserID.EQ(Users.ID))).
+		GROUP_BY(Users.ID).
 		ORDER_BY(Users.ID.DESC()).
 		LIMIT(int64(limit))
 
@@ -172,12 +178,21 @@ func (r *UserRepository) ListWithRoles(limit int, cursor *ulid.ULID) ([]UserWith
 		query = query.WHERE(Users.ID.LT(Bytea(cursor.Bytes())))
 	}
 
-	var results []UserWithRoles
+	var results []UserWithRolesRaw
 	err := query.Query(r.db, &results)
 	if err != nil {
 		log.Printf("[ERROR] ListWithRoles query failed: %v", err)
 		return nil, apperror.FromPGError(err)
 	}
 
-	return results, nil
+	var parsedResults = utils.Map(
+		results,
+		func(result UserWithRolesRaw) UserWithRoles {
+			return UserWithRoles{
+				Users: result.Users,
+				Roles: result.Roles,
+			}
+		})
+
+	return parsedResults, nil
 }

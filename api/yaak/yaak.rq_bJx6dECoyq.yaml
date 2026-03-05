@@ -1,10 +1,10 @@
 type: http_request
 model: http_request
-id: rq_BYc24mzemP
-createdAt: 2026-02-13T06:06:56.883218609
-updatedAt: 2026-03-05T00:16:59.742686908
+id: rq_bJx6dECoyq
+createdAt: 2026-03-04T21:55:37.491940892
+updatedAt: 2026-03-05T00:18:10.384361580
 workspaceId: wk_rqabM2anNY
-folderId: fl_iqLoX9Msgo
+folderId: fl_Lrc47bsb5r
 authentication: {}
 authenticationType: null
 body: {}
@@ -12,7 +12,7 @@ bodyType: null
 description: ''
 headers: []
 method: GET
-name: localhost:3000/users/me
+name: ''
 sortPriority: 0.0
-url: http://localhost:3000/users/me
+url: http://localhost:3000/admin/users/user_01KGT98EWSPXQEWMW6SP1Y6AQJ
 urlParameters: []
