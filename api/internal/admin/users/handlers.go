@@ -1,8 +1,7 @@
-package admin
+package users
 
 import (
 	"auth/internal/apperror"
-	"auth/internal/jet/postgres/public/model"
 	"auth/internal/utils/ulidutil"
 	"time"
 
@@ -29,7 +28,7 @@ type UserWithMetadata struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 }
 
-func (s *AdminService) ListUsers(params ListUsersParams) (ListUsersResponse, error) {
+func (s *AdminUsersService) ListUsers(params ListUsersParams) (ListUsersResponse, error) {
 	if params.Limit == 0 {
 		params.Limit = 20
 	}
@@ -93,7 +92,7 @@ type GetUserResponse struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 }
 
-func (s *AdminService) GetUser(userID ulid.ULID) (GetUserResponse, error) {
+func (s *AdminUsersService) GetUser(userID ulid.ULID) (GetUserResponse, error) {
 	user, err := s.userRepo.GetByID(userID)
 	if err != nil {
 		return GetUserResponse{}, err
@@ -129,7 +128,7 @@ type UpdateUserRoleBody struct {
 	Role string `json:"role"`
 }
 
-func (s *AdminService) AddUserRole(params UpdateUserRoleParams) error {
+func (s *AdminUsersService) AddUserRole(params UpdateUserRoleParams) error {
 	userID, err := ulidutil.FromPrefixed("user", params.UserID)
 	if err != nil {
 		return apperror.NewBadRequest("Invalid user ID")
@@ -137,29 +136,10 @@ func (s *AdminService) AddUserRole(params UpdateUserRoleParams) error {
 	return s.roleRepo.CreateUserRole(userID, params.Role)
 }
 
-func (s *AdminService) RemoveUserRole(params UpdateUserRoleParams) error {
+func (s *AdminUsersService) RemoveUserRole(params UpdateUserRoleParams) error {
 	userID, err := ulidutil.FromPrefixed("user", params.UserID)
 	if err != nil {
 		return apperror.NewBadRequest("Invalid user ID")
 	}
 	return s.roleRepo.DeleteUserRole(userID, params.Role)
-}
-
-type CreateRoleParams struct {
-	Name string `json:"name"`
-}
-
-func (s *AdminService) CreateRole(params CreateRoleParams) error {
-	role := model.Roles{
-		Name: params.Name,
-	}
-	return s.roleRepo.Create(role)
-}
-
-type DeleteRoleParams struct {
-	Name string `json:"name"`
-}
-
-func (s *AdminService) DeleteRole(params DeleteRoleParams) error {
-	return s.roleRepo.Delete(params.Name)
 }

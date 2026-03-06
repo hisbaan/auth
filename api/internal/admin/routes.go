@@ -1,12 +1,12 @@
 package admin
 
 import (
+	adminevents "auth/internal/admin/events"
+	adminroles "auth/internal/admin/roles"
+	adminusers "auth/internal/admin/users"
 	"auth/internal/middleware"
-	"auth/internal/utils/httputil"
-	"auth/internal/utils/ulidutil"
 	"crypto/ed25519"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -16,164 +16,9 @@ func Router(s *AdminService, jwtAccessKey ed25519.PublicKey, issuer string) http
 	r.Use(middleware.Auth(jwtAccessKey, issuer))
 	r.Use(middleware.RequireAdmin(issuer))
 
-	//	@Summary		List users
-	//	@Description	Returns a paginated list of users (admin only)
-	//	@Tags			admin
-	//	@Security		BearerAuth
-	//	@Param			cursor	query		string	false	"Pagination cursor"
-	//	@Param			limit	query		int		false	"Maximum number of results (max 100)"
-	//	@Success		200		{object}	ListUsersResponse
-	//	@Failure		401
-	//	@Failure		403
-	//	@Router			/admin/users [get]
-	r.Get("/users", func(w http.ResponseWriter, r *http.Request) {
-		params := ListUsersParams{
-			Limit:  20,
-			Cursor: r.URL.Query().Get("cursor"),
-		}
-		if limit := r.URL.Query().Get("limit"); limit != "" {
-			if n, err := strconv.Atoi(limit); err == nil {
-				params.Limit = n
-			}
-		}
-
-		response, err := s.ListUsers(params)
-		if err != nil {
-			httputil.HandleError(w, err)
-			return
-		}
-
-		httputil.JSONResponse(w, http.StatusOK, response)
-	})
-
-	//	@Summary		Get user by ID
-	//	@Description	Returns a user by their ID (admin only)
-	//	@Tags			admin
-	//	@Security		BearerAuth
-	//	@Param			id	path		string	true	"User ID"
-	//	@Success		200	{object}	GetUserResponse
-	//	@Failure		400
-	//	@Failure		401
-	//	@Failure		403
-	//	@Failure		404
-	//	@Router			/admin/users/{id} [get]
-	r.Get("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
-		id, err := ulidutil.FromPrefixed("user", chi.URLParam(r, "id"))
-		if err != nil {
-			http.Error(w, "Invalid user ID", http.StatusBadRequest)
-			return
-		}
-
-		response, err := s.GetUser(id)
-		if err != nil {
-			httputil.HandleError(w, err)
-			return
-		}
-
-		httputil.JSONResponse(w, http.StatusOK, response)
-	})
-
-	//	@Summary		Add user role
-	//	@Description	Assigns a role to a user (admin only)
-	//	@Tags			admin
-	//	@Security		BearerAuth
-	//	@Accept			json
-	//	@Param			userId	path	string				true	"User ID"
-	//	@Param			request	body	UpdateUserRoleBody	true	"User role assignment"
-	//	@Success		204
-	//	@Failure		400
-	//	@Failure		401
-	//	@Failure		403
-	//	@Router			/admin/users/{userId}/roles [post]
-	r.Post("/users/{userId}/roles", func(w http.ResponseWriter, r *http.Request) {
-		var body UpdateUserRoleBody
-		if err := httputil.ParseBody(w, r, &body); err != nil {
-			return
-		}
-
-		err := s.AddUserRole(UpdateUserRoleParams{
-			UserID: chi.URLParam(r, "userId"),
-			Role:   body.Role,
-		})
-		if err != nil {
-			httputil.HandleError(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	//	@Summary		Remove user role
-	//	@Description	Removes a role from a user (admin only)
-	//	@Tags			admin
-	//	@Security		BearerAuth
-	//	@Param			userId	path	string	true	"User ID"
-	//	@Param			role	path	string	true	"Role name"
-	//	@Success		204
-	//	@Failure		400
-	//	@Failure		401
-	//	@Failure		403
-	//	@Router			/admin/users/{userId}/roles/{role} [delete]
-	r.Delete("/users/{userId}/roles/{role}", func(w http.ResponseWriter, r *http.Request) {
-		err := s.RemoveUserRole(UpdateUserRoleParams{
-			UserID: chi.URLParam(r, "userId"),
-			Role:   chi.URLParam(r, "role"),
-		})
-		if err != nil {
-			httputil.HandleError(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	//	@Summary		Create role
-	//	@Description	Creates a new role (admin only)
-	//	@Tags			admin
-	//	@Security		BearerAuth
-	//	@Accept			json
-	//	@Param			request	body	CreateRoleParams	true	"Role details"
-	//	@Success		204
-	//	@Failure		400
-	//	@Failure		401
-	//	@Failure		403
-	//	@Router			/admin/roles [post]
-	r.Post("/roles", func(w http.ResponseWriter, r *http.Request) {
-		var body CreateRoleParams
-		if err := httputil.ParseBody(w, r, &body); err != nil {
-			return
-		}
-
-		err := s.CreateRole(body)
-		if err != nil {
-			httputil.HandleError(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	//	@Summary		Delete role
-	//	@Description	Deletes a role (admin only)
-	//	@Tags			admin
-	//	@Security		BearerAuth
-	//	@Param			name	path		string	true	"Role name"
-	//	@Success		204
-	//	@Failure		400
-	//	@Failure		401
-	//	@Failure		403
-	//	@Router			/admin/roles/{name} [delete]
-	r.Delete("/roles/{name}", func(w http.ResponseWriter, r *http.Request) {
-		name := chi.URLParam(r, "name")
-		if name == "" {
-			http.Error(w, "Role name required", http.StatusBadRequest)
-			return
-		}
-
-		err := s.DeleteRole(DeleteRoleParams{Name: name})
-		if err != nil {
-			httputil.HandleError(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
+	r.Mount("/users", adminusers.Router(s.Users))
+	r.Mount("/roles", adminroles.Router(s.Roles))
+	r.Mount("/events", adminevents.Router(s.Events))
 
 	return r
 }

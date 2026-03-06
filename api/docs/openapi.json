@@ -1,94 +1,6 @@
 {
   "components": {
     "schemas": {
-      "admin.CreateRoleParams": {
-        "properties": {
-          "name": {
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "admin.GetUserResponse": {
-        "properties": {
-          "created_at": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          },
-          "email_verified": {
-            "type": "boolean"
-          },
-          "id": {
-            "type": "string"
-          },
-          "roles": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "updated_at": {
-            "type": "string"
-          },
-          "username": {
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "admin.ListUsersResponse": {
-        "properties": {
-          "next_cursor": {
-            "type": "string"
-          },
-          "users": {
-            "items": {
-              "$ref": "#/components/schemas/admin.UserWithMetadata"
-            },
-            "type": "array"
-          }
-        },
-        "type": "object"
-      },
-      "admin.UpdateUserRoleBody": {
-        "properties": {
-          "role": {
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "admin.UserWithMetadata": {
-        "properties": {
-          "created_at": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          },
-          "email_verified": {
-            "type": "boolean"
-          },
-          "id": {
-            "type": "string"
-          },
-          "roles": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "updated_at": {
-            "type": "string"
-          },
-          "username": {
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
       "auth.CreateUserParams": {
         "properties": {
           "email": {
@@ -186,18 +98,15 @@
         },
         "type": "object"
       },
-      "roles.ListRolesResponse": {
+      "auth_internal_admin_roles.CreateRoleParams": {
         "properties": {
-          "roles": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
+          "name": {
+            "type": "string"
           }
         },
         "type": "object"
       },
-      "users.GetUserResponse": {
+      "auth_internal_admin_users.GetUserResponse": {
         "properties": {
           "created_at": {
             "type": "string"
@@ -226,6 +135,60 @@
         },
         "type": "object"
       },
+      "auth_internal_users.GetUserResponse": {
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "email_verified": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "roles.ListRolesResponse": {
+        "properties": {
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "users.ListUsersResponse": {
+        "properties": {
+          "next_cursor": {
+            "type": "string"
+          },
+          "users": {
+            "items": {
+              "$ref": "#/components/schemas/users.UserWithMetadata"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "users.UpdatePasswordParams": {
         "properties": {
           "current_password": {
@@ -240,6 +203,43 @@
       "users.UpdateUserParams": {
         "properties": {
           "email": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "users.UpdateUserRoleBody": {
+        "properties": {
+          "role": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "users.UserWithMetadata": {
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "email_verified": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "updated_at": {
             "type": "string"
           },
           "username": {
@@ -328,7 +328,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/admin.CreateRoleParams"
+                "$ref": "#/components/schemas/auth_internal_admin_roles.CreateRoleParams"
               }
             }
           },
@@ -426,7 +426,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/admin.ListUsersResponse"
+                  "$ref": "#/components/schemas/users.ListUsersResponse"
                 }
               }
             },
@@ -469,7 +469,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/admin.GetUserResponse"
+                  "$ref": "#/components/schemas/auth_internal_admin_users.GetUserResponse"
                 }
               }
             },
@@ -517,7 +517,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/admin.UpdateUserRoleBody"
+                "$ref": "#/components/schemas/users.UpdateUserRoleBody"
               }
             }
           },
@@ -873,7 +873,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/users.GetUserResponse"
+                  "$ref": "#/components/schemas/auth_internal_users.GetUserResponse"
                 }
               }
             },

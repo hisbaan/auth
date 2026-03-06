@@ -1,22 +1,22 @@
 package admin
 
 import (
+	adminevents "auth/internal/admin/events"
+	adminroles "auth/internal/admin/roles"
+	adminusers "auth/internal/admin/users"
 	"database/sql"
-
-	"auth/internal/repositories"
 )
 
 type AdminService struct {
-	db *sql.DB
-
-	userRepo repositories.UserRepository
-	roleRepo repositories.RoleRepository
+	Users  *adminusers.AdminUsersService
+	Roles  *adminroles.AdminRolesService
+	Events *adminevents.AdminEventsService
 }
 
 func NewAdminService(db *sql.DB) *AdminService {
 	return &AdminService{
-		db:       db,
-		userRepo: repositories.NewUserRepository(db),
-		roleRepo: repositories.NewRoleRepository(db),
+		Users:  adminusers.NewAdminUsersService(db),
+		Roles:  adminroles.NewAdminRolesService(db),
+		Events: adminevents.NewAdminEventsService(db),
 	}
 }
