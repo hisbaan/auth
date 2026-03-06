@@ -11,6 +11,7 @@ package table
 // this method only once at the beginning of the program.
 func UseSchema(schema string) {
 	EmailVerificationTokens = EmailVerificationTokens.FromSchema(schema)
+	Events = Events.FromSchema(schema)
 	PasswordResetTokens = PasswordResetTokens.FromSchema(schema)
 	RefreshTokens = RefreshTokens.FromSchema(schema)
 	Roles = Roles.FromSchema(schema)

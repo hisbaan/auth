@@ -236,3 +236,52 @@ table "email_verification_tokens" {
     columns = [column.user_id]
   }
 }
+
+table "events" {
+  schema = schema.public
+
+  column "id" {
+    type = bytea
+    null = false
+  }
+  column "user_id" {
+    type = bytea
+    null = false
+  }
+  column "type" {
+    type = text
+    null = false
+  }
+  column "data" {
+    type = jsonb
+    null = false
+  }
+  column "ip_address" {
+    type = inet
+    null = false
+  }
+  column "user_agent" {
+    type = text
+    null = false
+  }
+  column "created_at" {
+    type = timestamptz
+    null = false
+    default = sql("now()")
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "fk_events_user_id" {
+    columns = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete = CASCADE
+  }
+  index "idx_events_user" {
+    columns = [column.user_id]
+  }
+  index "idx_events_type" {
+    columns = [column.type]
+  }
+}
