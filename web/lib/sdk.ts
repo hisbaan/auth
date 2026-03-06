@@ -1,0 +1,217 @@
+import { API_BASE_URL } from "@/lib/config";
+import type { ListRolesResponse, ListUsersResponse, LoginResponse, User } from "@/lib/types";
+
+type SDKRequestOptions = {
+  method?: "GET" | "POST" | "PUT" | "DELETE";
+  body?: unknown;
+  cookieHeader?: string;
+  headers?: Record<string, string>;
+};
+
+export type SDKResult<T> = {
+  ok: boolean;
+  status: number;
+  data?: T;
+  error?: string;
+  headers: Headers;
+};
+
+export async function sdkRequest<T>(path: string, options: SDKRequestOptions = {}): Promise<SDKResult<T>> {
+  const headers = new Headers();
+  headers.set("Accept", "application/json");
+
+  if (options.body !== undefined) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  if (options.cookieHeader) {
+    headers.set("Cookie", options.cookieHeader);
+  }
+
+  if (options.headers) {
+    for (const [key, value] of Object.entries(options.headers)) {
+      if (value) {
+        headers.set(key, value);
+      }
+    }
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: options.method ?? "GET",
+    headers,
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    cache: "no-store",
+  });
+
+  const contentType = response.headers.get("content-type") ?? "";
+  const isJson = contentType.includes("application/json");
+
+  if (!response.ok) {
+    const error = isJson ? JSON.stringify(await response.json()) : (await response.text()) || "Request failed";
+    return {
+      ok: false,
+      status: response.status,
+      error,
+      headers: response.headers,
+    };
+  }
+
+  const data = isJson ? ((await response.json()) as T) : undefined;
+  return {
+    ok: true,
+    status: response.status,
+    data,
+    headers: response.headers,
+  };
+}
+
+export async function loginWithPassword(email: string, password: string, userAgent?: string) {
+  return sdkRequest<LoginResponse>("/auth/login", {
+    method: "POST",
+    body: { email, password },
+    headers: userAgent ? { "User-Agent": userAgent } : undefined,
+  });
+}
+
+export async function registerUser(username: string, email: string, password: string) {
+  return sdkRequest<void>("/auth/register", {
+    method: "POST",
+    body: { username, email, password },
+  });
+}
+
+export async function sendForgotPassword(email: string) {
+  return sdkRequest<void>("/auth/forgot-password", {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  return sdkRequest<void>("/auth/password-reset", {
+    method: "POST",
+    body: { token, new_password: newPassword },
+  });
+}
+
+export async function verifyEmail(token: string) {
+  return sdkRequest<void>("/auth/verify-email", {
+    method: "POST",
+    body: { token },
+  });
+}
+
+export async function logout(cookieHeader: string) {
+  return sdkRequest<void>("/auth/logout", {
+    method: "POST",
+    cookieHeader,
+  });
+}
+
+// look at how withAuth works in other places like workos, this should be built into the next SDK
+// export async function withAuth() {
+//   const cookieStore = await cookies();
+//   const accessToken = cookieStore.get("access_token");
+//
+//   if (!accessToken) {
+//     return undefined;
+//   }
+//
+//   // TODO parse access token, if expired get refresh? maybe this should be called in middleware, take a look at
+// }
+
+export async function getCurrentUser(cookieHeader: string): Promise<User | null> {
+  const result = await sdkRequest<User>("/users/me", { cookieHeader });
+  if (!result.ok || !result.data) {
+    return null;
+  }
+
+  return result.data;
+}
+
+export async function updateCurrentUser(cookieHeader: string, username: string, email: string) {
+  return sdkRequest<void>("/users/me", {
+    method: "PUT",
+    cookieHeader,
+    body: { username, email },
+  });
+}
+
+export async function updateCurrentPassword(cookieHeader: string, currentPassword: string, newPassword: string) {
+  return sdkRequest<void>("/users/me/password", {
+    method: "POST",
+    cookieHeader,
+    body: {
+      current_password: currentPassword,
+      new_password: newPassword,
+    },
+  });
+}
+
+export async function deleteCurrentUser(cookieHeader: string) {
+  return sdkRequest<void>("/users/me", {
+    method: "DELETE",
+    cookieHeader,
+  });
+}
+
+export async function getRoles(cookieHeader: string): Promise<string[]> {
+  const result = await sdkRequest<ListRolesResponse>("/roles", { cookieHeader });
+  if (!result.ok || !result.data) {
+    return [];
+  }
+
+  return result.data.roles ?? [];
+}
+
+export async function listAdminUsers(cookieHeader: string, limit = 50): Promise<ListUsersResponse | null> {
+  const result = await sdkRequest<ListUsersResponse>(`/admin/users?limit=${limit}`, { cookieHeader });
+  if (!result.ok || !result.data) {
+    return null;
+  }
+
+  return result.data;
+}
+
+export async function getAdminUser(cookieHeader: string, userId: string): Promise<User | null> {
+  const result = await sdkRequest<User>(`/admin/users/${encodeURIComponent(userId)}`, {
+    cookieHeader,
+  });
+  if (!result.ok || !result.data) {
+    return null;
+  }
+
+  return result.data;
+}
+
+export async function createRole(cookieHeader: string, name: string) {
+  return sdkRequest<void>("/admin/roles", {
+    method: "POST",
+    cookieHeader,
+    body: { name },
+  });
+}
+
+export async function deleteRole(cookieHeader: string, name: string) {
+  return sdkRequest<void>(`/admin/roles/${encodeURIComponent(name)}`, {
+    method: "DELETE",
+    cookieHeader,
+  });
+}
+
+export async function addUserRole(cookieHeader: string, userId: string, role: string) {
+  return sdkRequest<void>(`/admin/users/${encodeURIComponent(userId)}/roles`, {
+    method: "POST",
+    cookieHeader,
+    body: {
+      role,
+    },
+  });
+}
+
+export async function removeUserRole(cookieHeader: string, userId: string, role: string) {
+  return sdkRequest<void>(`/admin/users/${encodeURIComponent(userId)}/roles/${encodeURIComponent(role)}`, {
+    method: "DELETE",
+    cookieHeader,
+  });
+}
