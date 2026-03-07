@@ -61,7 +61,7 @@ func Router(s *UsersService) http.Handler {
 			return
 		}
 
-		err = s.UpdateUser(userID, body)
+		err = s.UpdateUser(r.Context(), userID, body)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
@@ -91,7 +91,7 @@ func Router(s *UsersService) http.Handler {
 			return
 		}
 
-		err = s.UpdatePassword(userID, body)
+		err = s.UpdatePassword(r.Context(), userID, body)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
@@ -113,7 +113,7 @@ func Router(s *UsersService) http.Handler {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
 		}
 
-		err = s.DeleteUser(userID)
+		err = s.DeleteUser(r.Context(), userID)
 		if err != nil {
 			httputil.HandleError(w, err)
 		}

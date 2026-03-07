@@ -111,7 +111,7 @@ table "refresh_tokens" {
   }
   column "user_id" {
     type = bytea
-    null = false
+    null = true
   }
   column "parent_id" {
     type = bytea

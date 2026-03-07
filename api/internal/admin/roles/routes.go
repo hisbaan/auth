@@ -1,6 +1,8 @@
 package roles
 
 import (
+	"auth/internal/auth"
+	"auth/internal/middleware"
 	"auth/internal/utils/httputil"
 	"net/http"
 
@@ -27,7 +29,8 @@ func Router(s *AdminRolesService) http.Handler {
 			return
 		}
 
-		err := s.CreateRole(body)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*auth.AccessClaims)
+		err := s.CreateRole(r.Context(), body, ctx.Subject)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
@@ -52,7 +55,8 @@ func Router(s *AdminRolesService) http.Handler {
 			return
 		}
 
-		err := s.DeleteRole(DeleteRoleParams{Name: name})
+		ctx := r.Context().Value(middleware.AuthContextKey).(*auth.AccessClaims)
+		err := s.DeleteRole(r.Context(), DeleteRoleParams{Name: name}, ctx.Subject)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return

@@ -2,9 +2,18 @@ package httputil
 
 import (
 	"auth/internal/apperror"
+	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 )
+
+type ClientInfo struct {
+	IP        string
+	UserAgent string
+}
+
+type clientInfoKey struct{}
 
 func ParseBody(w http.ResponseWriter, r *http.Request, body any) error {
 	err := json.NewDecoder(r.Body).Decode(body)
@@ -28,4 +37,28 @@ func JSONResponse(w http.ResponseWriter, status int, response any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
+}
+
+func ClientInfoFromRequest(r *http.Request) ClientInfo {
+	ip := r.RemoteAddr
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		ip = forwarded
+	}
+	if host, _, err := net.SplitHostPort(ip); err == nil {
+		ip = host
+	}
+
+	return ClientInfo{
+		IP:        ip,
+		UserAgent: r.UserAgent(),
+	}
+}
+
+func WithClientInfo(ctx context.Context, info ClientInfo) context.Context {
+	return context.WithValue(ctx, clientInfoKey{}, info)
+}
+
+func ClientInfoFromContext(ctx context.Context) (ClientInfo, bool) {
+	info, ok := ctx.Value(clientInfoKey{}).(ClientInfo)
+	return info, ok
 }

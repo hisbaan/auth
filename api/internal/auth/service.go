@@ -23,6 +23,7 @@ type AuthService struct {
 	refreshTokenRepo           repositories.RefreshTokenRepository
 	passwordResetTokenRepo     repositories.PasswordResetTokenRepository
 	emailVerificationTokenRepo repositories.EmailVerificationTokenRepository
+	eventRepo                  repositories.EventRepository
 }
 
 func NewAuthService(db *sql.DB, signingKey ed25519.PrivateKey, signingKeyID string, issuer string, emailService *emails.EmailService, cookieDomain string) *AuthService {
@@ -40,5 +41,6 @@ func NewAuthService(db *sql.DB, signingKey ed25519.PrivateKey, signingKeyID stri
 		refreshTokenRepo:           repositories.NewRefreshTokenRepository(db),
 		passwordResetTokenRepo:     repositories.NewPasswordResetTokenRepository(db),
 		emailVerificationTokenRepo: repositories.NewEmailVerificationTokenRepository(db),
+		eventRepo:                  repositories.NewEventRepository(db),
 	}
 }

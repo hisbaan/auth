@@ -2,7 +2,9 @@ package users
 
 import (
 	"auth/internal/apperror"
+	"auth/internal/events"
 	"auth/internal/utils/ulidutil"
+	"context"
 	"time"
 
 	"github.com/oklog/ulid/v2"
@@ -128,18 +130,36 @@ type UpdateUserRoleBody struct {
 	Role string `json:"role"`
 }
 
-func (s *AdminUsersService) AddUserRole(params UpdateUserRoleParams) error {
+func (s *AdminUsersService) AddUserRole(ctx context.Context, params UpdateUserRoleParams, actorID string) error {
 	userID, err := ulidutil.FromPrefixed("user", params.UserID)
 	if err != nil {
 		return apperror.NewBadRequest("Invalid user ID")
 	}
-	return s.roleRepo.CreateUserRole(userID, params.Role)
+	if err := s.roleRepo.CreateUserRole(userID, params.Role); err != nil {
+		return err
+	}
+
+	events.Log(ctx, &s.eventRepo, events.RoleAssigned, &userID, events.RoleAssignedData{
+		Role:    params.Role,
+		ActorID: actorID,
+	})
+
+	return nil
 }
 
-func (s *AdminUsersService) RemoveUserRole(params UpdateUserRoleParams) error {
+func (s *AdminUsersService) RemoveUserRole(ctx context.Context, params UpdateUserRoleParams, actorID string) error {
 	userID, err := ulidutil.FromPrefixed("user", params.UserID)
 	if err != nil {
 		return apperror.NewBadRequest("Invalid user ID")
 	}
-	return s.roleRepo.DeleteUserRole(userID, params.Role)
+	if err := s.roleRepo.DeleteUserRole(userID, params.Role); err != nil {
+		return err
+	}
+
+	events.Log(ctx, &s.eventRepo, events.RoleUnassigned, &userID, events.RoleUnassignedData{
+		Role:    params.Role,
+		ActorID: actorID,
+	})
+
+	return nil
 }

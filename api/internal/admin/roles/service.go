@@ -6,11 +6,13 @@ import (
 )
 
 type AdminRolesService struct {
-	roleRepo repositories.RoleRepository
+	roleRepo  repositories.RoleRepository
+	eventRepo repositories.EventRepository
 }
 
 func NewAdminRolesService(db *sql.DB) *AdminRolesService {
 	return &AdminRolesService{
-		roleRepo: repositories.NewRoleRepository(db),
+		roleRepo:  repositories.NewRoleRepository(db),
+		eventRepo: repositories.NewEventRepository(db),
 	}
 }

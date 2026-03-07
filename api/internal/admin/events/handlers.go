@@ -134,7 +134,7 @@ func (s *AdminEventsService) GetEvent(eventID ulid.ULID) (EventResponse, error) 
 func mapEvent(event model.Events) EventResponse {
 	return EventResponse{
 		ID:        ulidutil.ToPrefixed("event", ulidutil.MustFromBytes(event.ID)),
-		UserID:    ulidutil.ToPrefixed("user", ulidutil.MustFromBytes(event.UserID)),
+		UserID:    ulidutil.ToPrefixed("user", ulidutil.MustFromBytes(*event.UserID)),
 		Type:      event.Type,
 		Data:      event.Data,
 		IPAddress: event.IPAddress,

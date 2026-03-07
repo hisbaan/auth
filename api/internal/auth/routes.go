@@ -3,8 +3,8 @@ package auth
 import (
 	"auth/internal/apperror"
 	"auth/internal/utils/httputil"
-	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -90,7 +90,7 @@ func Router(s *AuthService) http.Handler {
 			return
 		}
 
-		err := s.CreateUser(body)
+		err := s.CreateUser(r.Context(), body)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
@@ -114,16 +114,7 @@ func Router(s *AuthService) http.Handler {
 			return
 		}
 
-		ip := r.RemoteAddr
-		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-			ip = forwarded
-		}
-		if host, _, err := net.SplitHostPort(ip); err == nil {
-			ip = host
-		}
-		userAgent := r.UserAgent()
-
-		loginResponse, err := s.Login(body, ip, userAgent)
+		loginResponse, err := s.Login(r.Context(), body)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
@@ -161,16 +152,7 @@ func Router(s *AuthService) http.Handler {
 			return
 		}
 
-		ip := r.RemoteAddr
-		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-			ip = forwarded
-		}
-		if host, _, err := net.SplitHostPort(ip); err == nil {
-			ip = host
-		}
-		userAgent := r.UserAgent()
-
-		refreshResponse, err := s.Refresh(body, ip, userAgent)
+		refreshResponse, err := s.Refresh(r.Context(), body)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
@@ -187,6 +169,20 @@ func Router(s *AuthService) http.Handler {
 	//	@Success		204
 	//	@Router			/auth/logout [post]
 	r.Post("/logout", func(w http.ResponseWriter, r *http.Request) {
+		token := ""
+		authHeader := r.Header.Get("Authorization")
+		if authHeader != "" {
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+			if token == authHeader {
+				token = ""
+			}
+		} else {
+			cookie, err := r.Cookie(AccessTokenCookieName)
+			if err == nil && cookie != nil {
+				token = cookie.Value
+			}
+		}
+		s.Logout(r.Context(), token)
 		s.clearAuthCookies(w)
 		w.WriteHeader(http.StatusNoContent)
 	})
@@ -206,7 +202,7 @@ func Router(s *AuthService) http.Handler {
 			return
 		}
 
-		err := s.ForgotPassword(body)
+		err := s.ForgotPassword(r.Context(), body)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
@@ -225,14 +221,12 @@ func Router(s *AuthService) http.Handler {
 	//	@Failure		500
 	//	@Router			/auth/password-reset [post]
 	r.Post("/password-reset", func(w http.ResponseWriter, r *http.Request) {
-		println("here")
-
 		var body PasswordResetParams
 		if err := httputil.ParseBody(w, r, &body); err != nil {
 			return
 		}
 
-		err := s.PasswordReset(body)
+		err := s.PasswordReset(r.Context(), body)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
@@ -256,7 +250,7 @@ func Router(s *AuthService) http.Handler {
 			return
 		}
 
-		err := s.VerifyEmail(body)
+		err := s.VerifyEmail(r.Context(), body)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return

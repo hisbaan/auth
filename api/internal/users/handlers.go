@@ -3,9 +3,11 @@ package users
 import (
 	"auth/internal/apperror"
 	"auth/internal/auth"
+	"auth/internal/events"
 	"auth/internal/jet/postgres/public/model"
 	"auth/internal/utils"
 	"auth/internal/utils/ulidutil"
+	"context"
 	"time"
 
 	"github.com/oklog/ulid/v2"
@@ -48,7 +50,7 @@ type UpdateUserParams struct {
 	Username string `json:"username"`
 }
 
-func (s *UsersService) UpdateUser(userID ulid.ULID, params UpdateUserParams) error {
+func (s *UsersService) UpdateUser(ctx context.Context, userID ulid.ULID, params UpdateUserParams) error {
 	user := model.Users{
 		ID:       userID.Bytes(),
 		Email:    params.Email,
@@ -71,6 +73,9 @@ func (s *UsersService) UpdateUser(userID ulid.ULID, params UpdateUserParams) err
 		user.EmailVerified = false
 
 		userID := ulidutil.MustFromBytes(user.ID)
+		events.Log(ctx, &s.eventRepo, events.UserEmailVerificationRevoked, &userID, events.UserEmailVerificationRevokedData{
+			Email: existing.Email,
+		})
 		s.emailVerificationTokenRepo.RevokeByUserID(userID)
 
 		token, hashedToken := auth.GenerateResetToken()
@@ -83,12 +88,21 @@ func (s *UsersService) UpdateUser(userID ulid.ULID, params UpdateUserParams) err
 			CreatedAt: time.Now(),
 		}
 		s.emailVerificationTokenRepo.Create(emailVerificationTokenModel)
+		events.Log(ctx, &s.eventRepo, events.UserEmailVerificationCreated, &userID, events.UserEmailVerificationCreatedData{
+			Email: params.Email,
+		})
 		urlEncodedToken := auth.URLEncodeToken(token)
 
 		s.emailService.SendVerifyEmail(params.Email, params.Username, urlEncodedToken)
 	}
 
-	return s.userRepo.Update(user)
+	if err := s.userRepo.Update(user); err != nil {
+		return err
+	}
+
+	events.Log(ctx, &s.eventRepo, events.UserUpdated, &userID, events.UserUpdatedData{})
+
+	return nil
 }
 
 type UpdatePasswordParams struct {
@@ -96,7 +110,7 @@ type UpdatePasswordParams struct {
 	NewPassword     string `json:"new_password"`
 }
 
-func (s *UsersService) UpdatePassword(userID ulid.ULID, params UpdatePasswordParams) error {
+func (s *UsersService) UpdatePassword(ctx context.Context, userID ulid.ULID, params UpdatePasswordParams) error {
 	user, err := s.userRepo.GetByID(userID)
 	if err != nil {
 		return err
@@ -121,9 +135,13 @@ func (s *UsersService) UpdatePassword(userID ulid.ULID, params UpdatePasswordPar
 		return err
 	}
 
+	events.Log(ctx, &s.eventRepo, events.UserPasswordChanged, &userID, events.UserPasswordChangedData{})
+
 	return nil
 }
 
-func (s *UsersService) DeleteUser(userID ulid.ULID) error {
+func (s *UsersService) DeleteUser(ctx context.Context, userID ulid.ULID) error {
+	events.Log(ctx, &s.eventRepo, events.UserDeleted, &userID, events.UserDeletedData{})
+
 	return s.userRepo.Delete(userID)
 }

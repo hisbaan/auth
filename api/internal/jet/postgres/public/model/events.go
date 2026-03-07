@@ -13,7 +13,7 @@ import (
 
 type Events struct {
 	ID        []byte `sql:"primary_key"`
-	UserID    []byte
+	UserID    *[]byte
 	Type      string
 	Data      string
 	IPAddress string

@@ -2,19 +2,27 @@ package events
 
 type EventType string
 
+type EventReason string
+
 const (
 	UserCreated                  EventType = "user.created"
 	UserDeleted                  EventType = "user.deleted"
 	UserUpdated                  EventType = "user.updated"
+	UserPasswordChanged          EventType = "user.password_changed"
 	UserEmailVerified            EventType = "user.email_verified"
 	UserEmailVerificationCreated EventType = "user.email_verification_created"
+	UserEmailVerificationRevoked EventType = "user.email_verification_revoked"
 
 	APIKeyCreated EventType = "api_key.created"
 	APIKeyRevoked EventType = "api_key.revoked"
 	APIKeyUsed    EventType = "api_key.used"
 
-	AuthenticationPasswordSucceeded EventType = "authentication.password_succeeded"
-	AuthenticationPasswordFailed    EventType = "authentication.password_failed"
+	AuthenticationPasswordSucceeded   EventType = "authentication.password_succeeded"
+	AuthenticationPasswordFailed      EventType = "authentication.password_failed"
+	AuthenticationLogout              EventType = "authentication.logout"
+	AuthenticationRefreshFailed       EventType = "authentication.refresh_failed"
+	AuthenticationRefreshTokenRotated EventType = "authentication.refresh_token_rotated"
+	AuthenticationVerifyEmailFailed   EventType = "authentication.verify_email_failed"
 
 	RoleCreated    EventType = "role.created"
 	RoleDeleted    EventType = "role.deleted"
@@ -23,31 +31,42 @@ const (
 
 	PasswordResetCreated   EventType = "password_reset.created"
 	PasswordResetSucceeded EventType = "password_reset.succeeded"
+	PasswordResetFailed    EventType = "password_reset.failed"
 
 	AccessTokenCreated  EventType = "access_token.created"
 	RefreshTokenCreated EventType = "refresh_token.created"
 	RefreshTokenRevoked EventType = "refresh_token.revoked"
 )
 
+const (
+	EventReasonInvalidToken        EventReason = "invalid_token"
+	EventReasonExpiredToken        EventReason = "expired_token"
+	EventReasonRevokedToken        EventReason = "revoked_token"
+	EventReasonInvalidSignature    EventReason = "invalid_signature"
+	EventReasonUnknownRefreshToken EventReason = "unknown_refresh_token"
+)
+
 type UserCreatedData struct {
-	UserID string `json:"user_id"`
 }
 
 type UserDeletedData struct {
-	UserID string `json:"user_id"`
 }
 
 type UserUpdatedData struct {
-	UserID string `json:"user_id"`
+}
+
+type UserPasswordChangedData struct {
 }
 
 type UserEmailVerifiedData struct {
-	UserID string `json:"user_id"`
 }
 
 type UserEmailVerificationCreatedData struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
+	Email string `json:"email"`
+}
+
+type UserEmailVerificationRevokedData struct {
+	Email string `json:"email"`
 }
 
 type APIKeyCreatedData struct {
@@ -66,51 +85,69 @@ type APIKeyUsedData struct {
 }
 
 type AuthenticationPasswordSucceededData struct {
-	UserID string `json:"user_id"`
 }
 
 type AuthenticationPasswordFailedData struct {
 	Email string `json:"email"`
 }
 
+type AuthenticationLogoutData struct {
+}
+
+type AuthenticationRefreshFailedData struct {
+	RefreshTokenID string      `json:"refresh_token_id"`
+	Reason         EventReason `json:"reason"`
+}
+
+type AuthenticationRefreshTokenRotatedData struct {
+	OldRefreshTokenID string `json:"old_refresh_token_id"`
+	NewRefreshTokenID string `json:"new_refresh_token_id"`
+}
+
+type AuthenticationVerifyEmailFailedData struct {
+	Reason EventReason `json:"reason"`
+}
+
 type RoleCreatedData struct {
-	Role string `json:"role"`
+	Role    string `json:"role"`
+	ActorID string `json:"actor_id"`
 }
 
 type RoleDeletedData struct {
-	Role string `json:"role"`
+	Role    string `json:"role"`
+	ActorID string `json:"actor_id"`
 }
 
 type RoleAssignedData struct {
-	UserID string `json:"user_id"`
-	Role   string `json:"role"`
+	Role    string `json:"role"`
+	ActorID string `json:"actor_id"`
 }
 
 type RoleUnassignedData struct {
-	UserID string `json:"user_id"`
-	Role   string `json:"role"`
+	Role    string `json:"role"`
+	ActorID string `json:"actor_id"`
 }
 
 type PasswordResetCreatedData struct {
-	UserID               string `json:"user_id"`
 	PasswordResetTokenID string `json:"password_reset_token_id"`
 }
 
 type PasswordResetSucceededData struct {
-	UserID               string `json:"user_id"`
 	PasswordResetTokenID string `json:"password_reset_token_id"`
 }
 
+type PasswordResetFailedData struct {
+	PasswordResetTokenID string      `json:"password_reset_token_id"`
+	Reason               EventReason `json:"reason"`
+}
+
 type AccessTokenCreatedData struct {
-	UserID string `json:"user_id"`
 }
 
 type RefreshTokenCreatedData struct {
-	UserID         string `json:"user_id"`
 	RefreshTokenID string `json:"refresh_token_id"`
 }
 
 type RefreshTokenRevokedData struct {
-	UserID         string `json:"user_id"`
 	RefreshTokenID string `json:"refresh_token_id"`
 }
