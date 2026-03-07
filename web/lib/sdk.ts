@@ -1,5 +1,11 @@
 import { API_BASE_URL } from "@/lib/config";
-import type { ListRolesResponse, ListUsersResponse, LoginResponse, User } from "@/lib/types";
+import type {
+  ListEventsResponse,
+  ListRolesResponse,
+  ListUsersResponse,
+  LoginResponse,
+  User,
+} from "@/lib/types";
 
 type SDKRequestOptions = {
   method?: "GET" | "POST" | "PUT" | "DELETE";
@@ -177,6 +183,36 @@ export async function getAdminUser(cookieHeader: string, userId: string): Promis
   const result = await sdkRequest<User>(`/admin/users/${encodeURIComponent(userId)}`, {
     cookieHeader,
   });
+  if (!result.ok || !result.data) {
+    return null;
+  }
+
+  return result.data;
+}
+
+type ListAdminUserEventsOptions = {
+  limit?: number;
+  cursor?: string;
+};
+
+export async function listAdminUserEvents(
+  cookieHeader: string,
+  userId: string,
+  options: ListAdminUserEventsOptions = {},
+): Promise<ListEventsResponse | null> {
+  const params = new URLSearchParams();
+  if (options.limit) {
+    params.set("limit", String(options.limit));
+  }
+  if (options.cursor) {
+    params.set("cursor", options.cursor);
+  }
+
+  const query = params.toString();
+  const path = query
+    ? `/admin/events/users/${encodeURIComponent(userId)}?${query}`
+    : `/admin/events/users/${encodeURIComponent(userId)}`;
+  const result = await sdkRequest<ListEventsResponse>(path, { cookieHeader });
   if (!result.ok || !result.data) {
     return null;
   }

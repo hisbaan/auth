@@ -10,6 +10,7 @@ import {
   createRole,
   deleteCurrentUser,
   deleteRole,
+  listAdminUserEvents,
   loginWithPassword,
   logout,
   registerUser,
@@ -20,6 +21,7 @@ import {
   updateCurrentUser,
   verifyEmail,
 } from "@/lib/sdk";
+import { mapAdminUserEvents } from "@/lib/event-utils";
 import { setFlash } from "@/lib/flash";
 import { sanitizeRelativePath } from "@/lib/utils";
 
@@ -278,6 +280,27 @@ export async function removeUserRoleAction(formData: FormData) {
 
   await setFlash("success", "Role removed");
   redirect("/admin");
+}
+
+export async function listAdminUserEventsAction(
+  userId: string,
+  cursor?: string,
+  limit = 20,
+) {
+  if (!userId) {
+    return { events: [], nextCursor: undefined, error: "User ID is required" };
+  }
+
+  const cookieStore = await cookies();
+  const response = await listAdminUserEvents(cookieStore.toString(), userId, {
+    cursor,
+    limit,
+  });
+  if (!response) {
+    return { events: [], nextCursor: undefined, error: "Unable to load events" };
+  }
+
+  return { ...mapAdminUserEvents(response), error: undefined };
 }
 
 export async function authorizeContinueAction(formData: FormData) {

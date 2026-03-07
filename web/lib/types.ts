@@ -23,3 +23,18 @@ export type ListUsersResponse = {
 export type ListRolesResponse = {
   roles: string[];
 };
+
+export type EventResponse = {
+  id: string;
+  user_id: string;
+  type: string;
+  data: string;
+  ip_address: string;
+  user_agent: string;
+  created_at: string;
+};
+
+export type ListEventsResponse = {
+  events: EventResponse[];
+  next_cursor?: string;
+};

@@ -26,7 +26,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { withAuth } from "@/lib/auth";
-import { getAdminUser } from "@/lib/sdk";
+import { mapAdminUserEvents } from "@/lib/event-utils";
+import { getAdminUser, listAdminUserEvents } from "@/lib/sdk";
 import { Check } from "lucide-react";
 
 type AdminUserDetailPageProps = {
@@ -54,37 +55,6 @@ const mockSessions = [
   },
 ];
 
-const mockEvents = [
-  {
-    id: "evt_01J1Z1K0N9M4F1E5A2C9D8Y7Q1",
-    type: "user.login.succeeded",
-    createdAt: "2026-03-05T16:22:10Z",
-    payload: {
-      ip: "203.0.113.42",
-      user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3)",
-      session_id: "sess_01J1WQ7F2W9NFK9Z9C2H2G0Z9A",
-    },
-  },
-  {
-    id: "evt_01J1Z1H4J3N5C2V7Q0X3B8Z9P4",
-    type: "user.role.assigned",
-    createdAt: "2026-03-02T11:48:52Z",
-    payload: {
-      role: "admin",
-      assigned_by: "user_01J0FKV1D1X7B9C8N3G2H1Q0P9",
-    },
-  },
-  {
-    id: "evt_01J1Z1F0W8D2M9Z5H7Q2X4N6V1",
-    type: "user.profile.updated",
-    createdAt: "2026-02-26T08:15:21Z",
-    payload: {
-      fields: ["email"],
-      previous_email: "old-email@example.com",
-      new_email: "new-email@example.com",
-    },
-  },
-];
 
 const formatDateTime = (value?: string) => {
   if (!value) {
@@ -109,8 +79,12 @@ export default async function AdminUserDetailPage({
     unauthorizedRedirect: "/",
   });
 
-  const user = await getAdminUser(cookieHeader, userId);
+  const [user, eventsResponse] = await Promise.all([
+    getAdminUser(cookieHeader, userId),
+    listAdminUserEvents(cookieHeader, userId),
+  ]);
   const roles = user?.roles ?? [];
+  const { events, nextCursor } = mapAdminUserEvents(eventsResponse);
 
   return (
     <div className="min-h-screen">
@@ -334,7 +308,11 @@ export default async function AdminUserDetailPage({
                 <CardTitle>Audit events</CardTitle>
               </CardHeader>
               <CardContent>
-                <AdminUserEvents events={mockEvents} />
+                <AdminUserEvents
+                  events={events}
+                  nextCursor={nextCursor}
+                  userId={userId}
+                />
               </CardContent>
             </Card>
           </TabsContent>
