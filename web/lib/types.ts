@@ -38,3 +38,19 @@ export type ListEventsResponse = {
   events: EventResponse[];
   next_cursor?: string;
 };
+
+export type RefreshTokenResponse = {
+  id: string;
+  user_id: string;
+  issued_at: string;
+  expires_at: string;
+  revoked_at?: string | null;
+  ip_address: string;
+  user_agent: string;
+  status: "active" | "expired" | "revoked";
+};
+
+export type ListRefreshTokensResponse = {
+  refresh_tokens: RefreshTokenResponse[];
+  next_cursor?: string;
+};

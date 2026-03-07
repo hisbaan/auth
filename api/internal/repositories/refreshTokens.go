@@ -1,12 +1,13 @@
 package repositories
 
 import (
-	"auth/internal/apperror"
-	"auth/internal/jet/postgres/public/model"
-	. "auth/internal/jet/postgres/public/table"
 	"database/sql"
 	"log"
 	"time"
+
+	"auth/internal/apperror"
+	"auth/internal/jet/postgres/public/model"
+	. "auth/internal/jet/postgres/public/table"
 
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/oklog/ulid/v2"
@@ -70,4 +71,25 @@ func (r *RefreshTokenRepository) Create(token model.RefreshTokens) error {
 		return apperror.NewInternalServerError("Database query error")
 	}
 	return nil
+}
+
+func (r *RefreshTokenRepository) ListByUserID(userID ulid.ULID, limit int, cursor *ulid.ULID) ([]model.RefreshTokens, error) {
+	query := RefreshTokens.SELECT(RefreshTokens.AllColumns).
+		ORDER_BY(RefreshTokens.ID.DESC()).
+		LIMIT(int64(limit))
+
+	if cursor != nil {
+		query = query.WHERE(AND(RefreshTokens.UserID.EQ(Bytea(userID.Bytes())), RefreshTokens.ID.LT(Bytea(cursor.Bytes()))))
+	} else {
+		query = query.WHERE(RefreshTokens.UserID.EQ(Bytea(userID.Bytes())))
+	}
+
+	var tokens []model.RefreshTokens
+	err := query.Query(r.db, &tokens)
+	if err != nil {
+		log.Printf("[ERROR] ListByUserID refresh tokens failed: %v", err)
+		return nil, apperror.NewInternalServerError("Database query error")
+	}
+
+	return tokens, nil
 }

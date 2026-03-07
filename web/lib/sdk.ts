@@ -1,10 +1,11 @@
 import { API_BASE_URL } from "@/lib/config";
 import type {
-  ListEventsResponse,
-  ListRolesResponse,
-  ListUsersResponse,
-  LoginResponse,
-  User,
+	ListEventsResponse,
+	ListRefreshTokensResponse,
+	ListRolesResponse,
+	ListUsersResponse,
+	LoginResponse,
+	User,
 } from "@/lib/types";
 
 type SDKRequestOptions = {
@@ -217,7 +218,39 @@ export async function listAdminUserEvents(
     return null;
   }
 
-  return result.data;
+	return result.data;
+}
+
+type ListAdminUserRefreshTokensOptions = {
+	limit?: number;
+	cursor?: string;
+};
+
+export async function listAdminUserRefreshTokens(
+	cookieHeader: string,
+	userId: string,
+	options: ListAdminUserRefreshTokensOptions = {},
+): Promise<ListRefreshTokensResponse | null> {
+	const params = new URLSearchParams();
+	if (options.limit) {
+		params.set("limit", String(options.limit));
+	}
+	if (options.cursor) {
+		params.set("cursor", options.cursor);
+	}
+
+	const query = params.toString();
+	const path = query
+		? `/admin/refresh-tokens/users/${encodeURIComponent(userId)}?${query}`
+		: `/admin/refresh-tokens/users/${encodeURIComponent(userId)}`;
+	const result = await sdkRequest<ListRefreshTokensResponse>(path, {
+		cookieHeader,
+	});
+	if (!result.ok || !result.data) {
+		return null;
+	}
+
+	return result.data;
 }
 
 export async function createRole(cookieHeader: string, name: string) {

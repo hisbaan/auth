@@ -11,14 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { AdminUserEvents } from "@/components/admin/user-events";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { AdminUserSessions } from "@/components/admin/user-sessions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
@@ -27,34 +20,17 @@ import {
 } from "@/components/ui/tooltip";
 import { withAuth } from "@/lib/auth";
 import { mapAdminUserEvents } from "@/lib/event-utils";
-import { getAdminUser, listAdminUserEvents } from "@/lib/sdk";
+import { mapAdminUserSessions } from "@/lib/session-utils";
+import {
+  getAdminUser,
+  listAdminUserEvents,
+  listAdminUserRefreshTokens,
+} from "@/lib/sdk";
 import { Check } from "lucide-react";
 
 type AdminUserDetailPageProps = {
   params: Promise<{ userId: string }>;
 };
-
-const mockSessions = [
-  {
-    id: "sess_01J1WQ7F2W9NFK9Z9C2H2G0Z9A",
-    device: "Chrome on macOS",
-    ipAddress: "203.0.113.42",
-    location: "San Francisco, CA",
-    status: "active",
-    lastActiveAt: "2026-03-05T16:22:10Z",
-    createdAt: "2026-03-03T09:14:32Z",
-  },
-  {
-    id: "sess_01J1S9Z4YAM8JQW7FQYB6RX4QH",
-    device: "Safari on iOS",
-    ipAddress: "198.51.100.18",
-    location: "New York, NY",
-    status: "revoked",
-    lastActiveAt: "2026-02-28T21:05:48Z",
-    createdAt: "2026-02-25T18:40:12Z",
-  },
-];
-
 
 const formatDateTime = (value?: string) => {
   if (!value) {
@@ -79,12 +55,15 @@ export default async function AdminUserDetailPage({
     unauthorizedRedirect: "/",
   });
 
-  const [user, eventsResponse] = await Promise.all([
+  const [user, eventsResponse, refreshTokensResponse] = await Promise.all([
     getAdminUser(cookieHeader, userId),
     listAdminUserEvents(cookieHeader, userId),
+    listAdminUserRefreshTokens(cookieHeader, userId),
   ]);
   const roles = user?.roles ?? [];
   const { events, nextCursor } = mapAdminUserEvents(eventsResponse);
+  const { sessions, nextCursor: sessionsNextCursor } =
+    mapAdminUserSessions(refreshTokensResponse);
 
   return (
     <div className="min-h-screen">
@@ -249,55 +228,14 @@ export default async function AdminUserDetailPage({
           <TabsContent value="sessions" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Active sessions</CardTitle>
+                <CardTitle>Sessions</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto rounded-lg border border-border/60">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/30">
-                        <TableHead>Session</TableHead>
-                        <TableHead>Device</TableHead>
-                        <TableHead>IP</TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead>Last active</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {mockSessions.map((session) => (
-                        <TableRow key={session.id}>
-                          <TableCell>
-                            <CopyableCode value={session.id} />
-                          </TableCell>
-                          <TableCell className="font-mono">
-                            {session.device}
-                          </TableCell>
-                          <TableCell className="font-mono">
-                            {session.ipAddress}
-                          </TableCell>
-                          <TableCell className="font-mono">
-                            {session.location}
-                          </TableCell>
-                          <TableCell className="font-mono">
-                            {formatDateTime(session.lastActiveAt)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                session.status === "active"
-                                  ? "default"
-                                  : "outline"
-                              }
-                            >
-                              {session.status}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <AdminUserSessions
+                  sessions={sessions}
+                  nextCursor={sessionsNextCursor}
+                  userId={userId}
+                />
               </CardContent>
             </Card>
           </TabsContent>

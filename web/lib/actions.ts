@@ -6,22 +6,24 @@ import { redirect } from "next/navigation";
 import { buildAuthorizeSuccessUrl, isAllowedCallbackUrl } from "@/lib/callback";
 import { COOKIE_DOMAIN, COOKIE_SECURE } from "@/lib/config";
 import {
-  addUserRole,
-  createRole,
-  deleteCurrentUser,
-  deleteRole,
-  listAdminUserEvents,
-  loginWithPassword,
-  logout,
-  registerUser,
-  removeUserRole,
-  resetPassword,
-  sendForgotPassword,
-  updateCurrentPassword,
-  updateCurrentUser,
-  verifyEmail,
+	addUserRole,
+	createRole,
+	deleteCurrentUser,
+	deleteRole,
+	listAdminUserEvents,
+	listAdminUserRefreshTokens,
+	loginWithPassword,
+	logout,
+	registerUser,
+	removeUserRole,
+	resetPassword,
+	sendForgotPassword,
+	updateCurrentPassword,
+	updateCurrentUser,
+	verifyEmail,
 } from "@/lib/sdk";
 import { mapAdminUserEvents } from "@/lib/event-utils";
+import { mapAdminUserSessions } from "@/lib/session-utils";
 import { setFlash } from "@/lib/flash";
 import { sanitizeRelativePath } from "@/lib/utils";
 
@@ -300,7 +302,28 @@ export async function listAdminUserEventsAction(
     return { events: [], nextCursor: undefined, error: "Unable to load events" };
   }
 
-  return { ...mapAdminUserEvents(response), error: undefined };
+	return { ...mapAdminUserEvents(response), error: undefined };
+}
+
+export async function listAdminUserRefreshTokensAction(
+	userId: string,
+	cursor?: string,
+	limit = 20,
+) {
+	if (!userId) {
+		return { sessions: [], nextCursor: undefined, error: "User ID is required" };
+	}
+
+	const cookieStore = await cookies();
+	const response = await listAdminUserRefreshTokens(cookieStore.toString(), userId, {
+		cursor,
+		limit,
+	});
+	if (!response) {
+		return { sessions: [], nextCursor: undefined, error: "Unable to load sessions" };
+	}
+
+	return { ...mapAdminUserSessions(response), error: undefined };
 }
 
 export async function authorizeContinueAction(formData: FormData) {
