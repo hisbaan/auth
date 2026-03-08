@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"auth/internal/auth"
+	"auth/internal/utils/jwtutil"
 	"context"
 	"crypto/ed25519"
 	"net/http"
@@ -31,12 +32,12 @@ func Auth(publicKey ed25519.PublicKey, issuer string) func(next http.Handler) ht
 				token = cookie.Value
 			}
 
-			_, claims, err := auth.ValidateToken[*auth.AccessClaims](publicKey, token, &auth.AccessClaims{})
+			_, claims, err := jwtutil.ValidateToken[*auth.AccessClaims](publicKey, token, &auth.AccessClaims{})
 			if err != nil {
 				http.Error(w, "Invalid token", http.StatusUnauthorized)
 				return
 			}
-			if err = auth.ValidateClaims(claims.RegisteredClaims, issuer); err != nil {
+			if err = jwtutil.ValidateClaims(claims.RegisteredClaims, issuer); err != nil {
 				http.Error(w, "Invalid token", http.StatusUnauthorized)
 				return
 			}

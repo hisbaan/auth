@@ -6,6 +6,7 @@ import (
 	"auth/internal/jet/postgres/public/model"
 	"auth/internal/utils"
 	"auth/internal/utils/httputil"
+	"auth/internal/utils/jwtutil"
 	"auth/internal/utils/ulidutil"
 	"context"
 	"crypto/ed25519"
@@ -188,11 +189,11 @@ func (s *AuthService) Logout(ctx context.Context, token string) {
 		return
 	}
 
-	_, claims, err := ValidateToken[*AccessClaims](s.jwtSigningKey.Public().(ed25519.PublicKey), token, &AccessClaims{})
+	_, claims, err := jwtutil.ValidateToken[*AccessClaims](s.jwtSigningKey.Public().(ed25519.PublicKey), token, &AccessClaims{})
 	if err != nil {
 		return
 	}
-	if err := ValidateClaims(claims.RegisteredClaims, s.issuer); err != nil {
+	if err := jwtutil.ValidateClaims(claims.RegisteredClaims, s.issuer); err != nil {
 		return
 	}
 	if claims.TokenType != "access" {
@@ -218,7 +219,7 @@ type RefreshResponse struct {
 }
 
 func (s *AuthService) Refresh(ctx context.Context, params RefreshParams) (RefreshResponse, error) {
-	_, claims, err := ValidateToken[*RefreshClaims](s.jwtSigningKey.Public().(ed25519.PublicKey), params.RefreshToken, &RefreshClaims{})
+	_, claims, err := jwtutil.ValidateToken[*RefreshClaims](s.jwtSigningKey.Public().(ed25519.PublicKey), params.RefreshToken, &RefreshClaims{})
 	if err != nil {
 		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, nil, events.AuthenticationRefreshFailedData{
 			Reason: events.EventReasonInvalidToken,
@@ -237,7 +238,7 @@ func (s *AuthService) Refresh(ctx context.Context, params RefreshParams) (Refres
 		})
 		return RefreshResponse{}, apperror.NewUnauthorized("Invalid token")
 	}
-	if err := ValidateClaims(claims.RegisteredClaims, s.issuer); err != nil {
+	if err := jwtutil.ValidateClaims(claims.RegisteredClaims, s.issuer); err != nil {
 		reason := events.EventReasonInvalidToken
 		if claims.ExpiresAt != nil && claims.ExpiresAt.Before(time.Now()) {
 			reason = events.EventReasonExpiredToken
