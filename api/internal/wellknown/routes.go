@@ -16,5 +16,12 @@ func Router(s *WellKnownService) http.Handler {
 	//	@Router			/.well-known/jwks.json [get]
 	r.Get("/jwks.json", s.GetJWKSHandler)
 
+	//	@Summary		Get OpenID Configuration
+	//	@Description	Returns the OpenID Configuration
+	//	@Tags			wellknown
+	//	@Success		200	{object}	OpenIDConfiguration
+	//	@Router			/.well-known/openid-configuration [get]
+	r.Get("/openid-configuration", s.GetOpenIDConfigurationHandler)
+
 	return r
 }

@@ -364,6 +364,68 @@
           }
         },
         "type": "object"
+      },
+      "wellknown.OpenIDConfiguration": {
+        "properties": {
+          "authorization_endpoint": {
+            "type": "string"
+          },
+          "code_challenge_methods_supported": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "grant_types_supported": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id_token_signing_alg_values_supported": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "jwks_uri": {
+            "type": "string"
+          },
+          "response_types_supported": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "scopes_supported": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subject_types_supported": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "token_endpoint": {
+            "type": "string"
+          },
+          "token_endpoint_auth_methods_supported": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "userinfo_endpoint": {
+            "type": "string"
+          }
+        },
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -399,6 +461,27 @@
           }
         },
         "summary": "Get JWKS",
+        "tags": [
+          "wellknown"
+        ]
+      }
+    },
+    "/.well-known/openid-configuration": {
+      "get": {
+        "description": "Returns the OpenID Configuration",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/wellknown.OpenIDConfiguration"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Get OpenID Configuration",
         "tags": [
           "wellknown"
         ]

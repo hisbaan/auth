@@ -25,7 +25,8 @@ import (
 )
 
 type Config struct {
-	DatabaseUrl      string `env:"DATABASE_URL,required"`
+	DatabaseURL      string `env:"DATABASE_URL,required"`
+	BaseURL          string `env:"BASE_URL,required"`
 	Port             string `env:"PORT,required"`
 	JWTSigningKeyPEM string `env:"JWT_SIGNING_KEY_FILE,file,required"`
 	JWTSigningKeyID  string `env:"JWT_SIGNING_KEY_ID,required"`
@@ -75,7 +76,7 @@ func main() {
 	}
 
 	// Setup db connection
-	db, err := sql.Open("postgres", cfg.DatabaseUrl)
+	db, err := sql.Open("postgres", cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("failed opening connection to postgres: %v", err)
 	}
@@ -116,6 +117,7 @@ func main() {
 	r.Mount("/admin", admin.Router(adminService, signingKey.Public().(ed25519.PublicKey), cfg.IssuerUrl))
 
 	wellknownService := wellknown.NewWellKnownService(
+		cfg.BaseURL,
 		signingKey.Public().(ed25519.PublicKey),
 		cfg.JWTSigningKeyID,
 	)
