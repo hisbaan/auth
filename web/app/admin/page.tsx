@@ -20,10 +20,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  addUserRoleAction,
   createRoleAction,
   deleteRoleAction,
-  removeUserRoleAction,
 } from "@/lib/actions";
 import { withAuth } from "@/lib/auth";
 import { getRoles, listAdminUsers } from "@/lib/sdk";

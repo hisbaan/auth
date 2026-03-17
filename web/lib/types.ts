@@ -54,3 +54,19 @@ export type ListRefreshTokensResponse = {
   refresh_tokens: RefreshTokenResponse[];
   next_cursor?: string;
 };
+
+export type Client = {
+  id: string;
+  user_id: string;
+  name: string;
+  redirect_uri: string;
+  allowed_scopes: string[];
+  revoked_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ListClientsResponse = {
+  clients: Client[];
+  next_cursor?: string;
+};

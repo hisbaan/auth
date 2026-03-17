@@ -47,6 +47,57 @@ table "users" {
   }
 }
 
+table "clients" {
+  schema = schema.public
+
+  column "id" {
+    type = bytea
+    null = false
+  }
+  column "user_id" {
+    type = bytea
+    null = false
+  }
+  column "name" {
+    type = text
+    null = false
+  }
+  column "redirect_uri" {
+    type = text
+    null = false
+  }
+  column "allowed_scopes" {
+    type = sql("text[]")
+    null = false
+  }
+  column "revoked_at" {
+    type = timestamptz
+    null = true
+  }
+  column "created_at" {
+    type = timestamptz
+    default = sql("now()")
+    null = false
+  }
+  column "updated_at" {
+    type = timestamptz
+    default = sql("now()")
+    null = false
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "fk_clients_user_id" {
+    columns = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete = "CASCADE"
+  }
+  index "idx_clients_user" {
+    columns = [column.user_id]
+  }
+}
+
 table "roles" {
   schema = schema.public
 
@@ -111,7 +162,7 @@ table "refresh_tokens" {
   }
   column "user_id" {
     type = bytea
-    null = true
+    null = false
   }
   column "parent_id" {
     type = bytea
@@ -246,7 +297,7 @@ table "events" {
   }
   column "user_id" {
     type = bytea
-    null = false
+    null = true
   }
   column "type" {
     type = text

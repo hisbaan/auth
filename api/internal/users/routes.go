@@ -7,6 +7,7 @@ import (
 	"auth/internal/utils/ulidutil"
 	"crypto/ed25519"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -117,6 +118,183 @@ func Router(s *UsersService) http.Handler {
 		if err != nil {
 			httputil.HandleError(w, err)
 		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	//	@Summary		List current user's clients
+	//	@Description	Returns a paginated list of OAuth clients for the authenticated user
+	//	@Tags			users
+	//	@Security		BearerAuth
+	//	@Param			cursor	query		string	false	"Pagination cursor"
+	//	@Param			limit	query		int		false	"Maximum number of results (max 100)"
+	//	@Success		200		{object}	ListClientsResponse
+	//	@Failure		401
+	//	@Router			/users/me/clients [get]
+	r.Get("/me/clients", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context().Value(middleware.AuthContextKey).(*auth.AccessClaims)
+		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		params := ListClientsParams{
+			Limit:  20,
+			Cursor: r.URL.Query().Get("cursor"),
+		}
+		if limit := r.URL.Query().Get("limit"); limit != "" {
+			if n, err := strconv.Atoi(limit); err == nil {
+				params.Limit = n
+			}
+		}
+
+		response, err := s.ListClients(userID, params)
+		if err != nil {
+			httputil.HandleError(w, err)
+			return
+		}
+
+		httputil.JSONResponse(w, http.StatusOK, response)
+	})
+
+	//	@Summary		Create client
+	//	@Description	Creates an OAuth client for the authenticated user
+	//	@Tags			users
+	//	@Security		BearerAuth
+	//	@Accept			json
+	//	@Param			request	body		ClientParams	true	"Client details"
+	//	@Success		204
+	//	@Failure		400
+	//	@Failure		401
+	//	@Failure		409
+	//	@Router			/users/me/clients [post]
+	r.Post("/me/clients", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context().Value(middleware.AuthContextKey).(*auth.AccessClaims)
+		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		var body ClientParams
+		if err := httputil.ParseBody(w, r, &body); err != nil {
+			return
+		}
+
+		err = s.CreateClient(r.Context(), userID, body)
+		if err != nil {
+			httputil.HandleError(w, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	//	@Summary		Update client
+	//	@Description	Updates an OAuth client owned by the authenticated user
+	//	@Tags			users
+	//	@Security		BearerAuth
+	//	@Accept			json
+	//	@Param			clientId	path		string		true	"Client ID"
+	//	@Param			request	body		ClientParams	true	"Updated client details"
+	//	@Success		204
+	//	@Failure		400
+	//	@Failure		401
+	//	@Failure		404
+	//	@Failure		409
+	//	@Router			/users/me/clients/{clientId} [put]
+	r.Put("/me/clients/{clientId}", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context().Value(middleware.AuthContextKey).(*auth.AccessClaims)
+		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		clientID, err := ulidutil.FromPrefixed("client", chi.URLParam(r, "clientId"))
+		if err != nil {
+			http.Error(w, "Invalid client ID", http.StatusBadRequest)
+			return
+		}
+
+		var body ClientParams
+		if err := httputil.ParseBody(w, r, &body); err != nil {
+			return
+		}
+
+		err = s.UpdateClient(r.Context(), userID, clientID, body)
+		if err != nil {
+			httputil.HandleError(w, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	//	@Summary		Revoke client
+	//	@Description	Revokes an OAuth client owned by the authenticated user
+	//	@Tags			users
+	//	@Security		BearerAuth
+	//	@Param			clientId	path	string	true	"Client ID"
+	//	@Success		204
+	//	@Failure		400
+	//	@Failure		401
+	//	@Failure		404
+	//	@Failure		409
+	//	@Router			/users/me/clients/{clientId}/revoke [post]
+	r.Post("/me/clients/{clientId}/revoke", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context().Value(middleware.AuthContextKey).(*auth.AccessClaims)
+		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		clientID, err := ulidutil.FromPrefixed("client", chi.URLParam(r, "clientId"))
+		if err != nil {
+			http.Error(w, "Invalid client ID", http.StatusBadRequest)
+			return
+		}
+
+		err = s.RevokeClient(r.Context(), userID, clientID)
+		if err != nil {
+			httputil.HandleError(w, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	//	@Summary		Delete client
+	//	@Description	Deletes an OAuth client owned by the authenticated user
+	//	@Tags			users
+	//	@Security		BearerAuth
+	//	@Param			clientId	path	string	true	"Client ID"
+	//	@Success		204
+	//	@Failure		400
+	//	@Failure		401
+	//	@Failure		404
+	//	@Router			/users/me/clients/{clientId} [delete]
+	r.Delete("/me/clients/{clientId}", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context().Value(middleware.AuthContextKey).(*auth.AccessClaims)
+		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		clientID, err := ulidutil.FromPrefixed("client", chi.URLParam(r, "clientId"))
+		if err != nil {
+			http.Error(w, "Invalid client ID", http.StatusBadRequest)
+			return
+		}
+
+		err = s.DeleteClient(r.Context(), userID, clientID)
+		if err != nil {
+			httputil.HandleError(w, err)
+			return
+		}
+
 		w.WriteHeader(http.StatusNoContent)
 	})
 

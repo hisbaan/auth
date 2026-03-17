@@ -258,6 +258,69 @@
         },
         "type": "object"
       },
+      "users.ClientParams": {
+        "properties": {
+          "allowed_scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "redirect_uri": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "users.ClientResponse": {
+        "properties": {
+          "allowed_scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "redirect_uri": {
+            "type": "string"
+          },
+          "revoked_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "users.ListClientsResponse": {
+        "properties": {
+          "clients": {
+            "items": {
+              "$ref": "#/components/schemas/users.ClientResponse"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "users.ListUsersResponse": {
         "properties": {
           "next_cursor": {
@@ -1316,6 +1379,224 @@
           }
         ],
         "summary": "Update current user",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/users/me/clients": {
+      "get": {
+        "description": "Returns a paginated list of OAuth clients for the authenticated user",
+        "parameters": [
+          {
+            "description": "Pagination cursor",
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of results (max 100)",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/users.ListClientsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List current user's clients",
+        "tags": [
+          "users"
+        ]
+      },
+      "post": {
+        "description": "Creates an OAuth client for the authenticated user",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/users.ClientParams"
+              }
+            }
+          },
+          "description": "Client details",
+          "required": true,
+          "x-originalParamName": "request"
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create client",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/users/me/clients/{clientId}": {
+      "delete": {
+        "description": "Deletes an OAuth client owned by the authenticated user",
+        "parameters": [
+          {
+            "description": "Client ID",
+            "in": "path",
+            "name": "clientId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Delete client",
+        "tags": [
+          "users"
+        ]
+      },
+      "put": {
+        "description": "Updates an OAuth client owned by the authenticated user",
+        "parameters": [
+          {
+            "description": "Client ID",
+            "in": "path",
+            "name": "clientId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/users.ClientParams"
+              }
+            }
+          },
+          "description": "Updated client details",
+          "required": true,
+          "x-originalParamName": "request"
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Update client",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/users/me/clients/{clientId}/revoke": {
+      "post": {
+        "description": "Revokes an OAuth client owned by the authenticated user",
+        "parameters": [
+          {
+            "description": "Client ID",
+            "in": "path",
+            "name": "clientId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Revoke client",
         "tags": [
           "users"
         ]

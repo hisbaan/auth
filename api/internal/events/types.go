@@ -12,6 +12,10 @@ const (
 	UserEmailVerified            EventType = "user.email_verified"
 	UserEmailVerificationCreated EventType = "user.email_verification_created"
 	UserEmailVerificationRevoked EventType = "user.email_verification_revoked"
+	ClientCreated                EventType = "client.created"
+	ClientUpdated                EventType = "client.updated"
+	ClientRevoked                EventType = "client.revoked"
+	ClientDeleted                EventType = "client.deleted"
 
 	APIKeyCreated EventType = "api_key.created"
 	APIKeyRevoked EventType = "api_key.revoked"
@@ -67,6 +71,26 @@ type UserEmailVerificationCreatedData struct {
 
 type UserEmailVerificationRevokedData struct {
 	Email string `json:"email"`
+}
+
+type ClientCreatedData struct {
+	ClientID string `json:"client_id"`
+	Name     string `json:"name"`
+}
+
+type ClientUpdatedData struct {
+	ClientID      string   `json:"client_id"`
+	Name          string   `json:"name"`
+	RedirectURI   string   `json:"redirect_uri"`
+	AllowedScopes []string `json:"allowed_scopes"`
+}
+
+type ClientRevokedData struct {
+	ClientID string `json:"client_id"`
+}
+
+type ClientDeletedData struct {
+	ClientID string `json:"client_id"`
 }
 
 type APIKeyCreatedData struct {

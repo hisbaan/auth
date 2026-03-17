@@ -1,7 +1,7 @@
 -- Create "events" table
 CREATE TABLE "events" (
   "id" bytea NOT NULL,
-  "user_id" bytea NOT NULL,
+  "user_id" bytea NULL,
   "type" text NOT NULL,
   "data" jsonb NOT NULL,
   "ip_address" inet NOT NULL,

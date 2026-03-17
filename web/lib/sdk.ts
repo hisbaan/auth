@@ -1,6 +1,8 @@
 import { API_BASE_URL } from "@/lib/config";
 import type {
+	Client,
 	ListEventsResponse,
+	ListClientsResponse,
 	ListRefreshTokensResponse,
 	ListRolesResponse,
 	ListUsersResponse,
@@ -160,6 +162,90 @@ export async function deleteCurrentUser(cookieHeader: string) {
     method: "DELETE",
     cookieHeader,
   });
+}
+
+type ListCurrentUserClientsOptions = {
+	limit?: number;
+	cursor?: string;
+};
+
+export async function listCurrentUserClients(
+	cookieHeader: string,
+	options: ListCurrentUserClientsOptions = {},
+): Promise<ListClientsResponse | null> {
+	const params = new URLSearchParams();
+	if (options.limit) {
+		params.set("limit", String(options.limit));
+	}
+	if (options.cursor) {
+		params.set("cursor", options.cursor);
+	}
+
+	const query = params.toString();
+	const path = query ? `/users/me/clients?${query}` : "/users/me/clients";
+	const result = await sdkRequest<ListClientsResponse>(path, { cookieHeader });
+	if (!result.ok || !result.data) {
+		return null;
+	}
+
+	return result.data;
+}
+
+type CreateCurrentUserClientParams = {
+	name: string;
+	redirectURI: string;
+	allowedScopes: string[];
+};
+
+type UpdateCurrentUserClientParams = {
+	name: string;
+	redirectURI: string;
+	allowedScopes: string[];
+};
+
+export async function createCurrentUserClient(
+	cookieHeader: string,
+	params: CreateCurrentUserClientParams,
+) {
+	return sdkRequest<Client>("/users/me/clients", {
+		method: "POST",
+		cookieHeader,
+		body: {
+			name: params.name,
+			redirect_uri: params.redirectURI,
+			allowed_scopes: params.allowedScopes,
+		},
+	});
+}
+
+export async function revokeCurrentUserClient(cookieHeader: string, clientId: string) {
+	return sdkRequest<void>(`/users/me/clients/${encodeURIComponent(clientId)}/revoke`, {
+		method: "POST",
+		cookieHeader,
+	});
+}
+
+export async function updateCurrentUserClient(
+	cookieHeader: string,
+	clientId: string,
+	params: UpdateCurrentUserClientParams,
+) {
+	return sdkRequest<void>(`/users/me/clients/${encodeURIComponent(clientId)}`, {
+		method: "PUT",
+		cookieHeader,
+		body: {
+			name: params.name,
+			redirect_uri: params.redirectURI,
+			allowed_scopes: params.allowedScopes,
+		},
+	});
+}
+
+export async function deleteCurrentUserClient(cookieHeader: string, clientId: string) {
+	return sdkRequest<void>(`/users/me/clients/${encodeURIComponent(clientId)}`, {
+		method: "DELETE",
+		cookieHeader,
+	});
 }
 
 export async function getRoles(cookieHeader: string): Promise<string[]> {

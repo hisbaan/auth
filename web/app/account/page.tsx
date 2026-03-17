@@ -1,3 +1,5 @@
+import { ClientActions } from "@/components/account/client-actions";
+import { CreateClientDialog } from "@/components/account/create-client-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,31 +9,54 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CopyableCode } from "@/components/ui/copyable-code";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  createClientAction,
+  deleteClientAction,
   deleteAccountAction,
+  revokeClientAction,
+  updateClientAction,
   updatePasswordAction,
   updateProfileAction,
 } from "@/lib/actions";
 import { withAuth } from "@/lib/auth";
+import { listCurrentUserClients } from "@/lib/sdk";
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+};
 
 export default async function AccountPage() {
-  const { user: me } = await withAuth({
+  const { user: me, cookieHeader } = await withAuth({
     loginRedirect: "/login?next=/account",
   });
+  const clientsResponse = await listCurrentUserClients(cookieHeader);
+  const clients = clientsResponse?.clients ?? [];
 
   return (
     <div className="min-h-screen">
-      <main className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-10 sm:px-6 lg:grid-cols-2">
-        <div className="space-y-4 lg:col-span-2">
-          <h1 className="text-3xl font-semibold tracking-tight">Account</h1>
-          <p className="text-muted-foreground">
-            Manage profile details, password, and your active session.
-          </p>
-        </div>
-
-        <Card>
+      <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-10 sm:px-6 lg:grid-cols-2">
+        <h1 className="text-3xl font-semibold tracking-tight lg:col-span-2">
+          Account
+        </h1>
+        <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle>Profile</CardTitle>
           </CardHeader>
@@ -69,7 +94,7 @@ export default async function AccountPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle>Security</CardTitle>
           </CardHeader>
@@ -107,6 +132,78 @@ export default async function AccountPage() {
               </div>
               <Button type="submit">Change password</Button>
             </form>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-start justify-between gap-4">
+              OIDC Clients
+              <CreateClientDialog createClientAction={createClientAction} />
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="overflow-x-auto rounded-lg border border-border/60">
+              <Table className="min-w-[760px]">
+                <TableHeader>
+                  <TableRow className="bg-muted/30">
+                    <TableHead>Name</TableHead>
+                    <TableHead>Client ID</TableHead>
+                    <TableHead>Redirect URI</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[56px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {clients.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        className="py-8 text-muted-foreground text-center"
+                        colSpan={6}
+                      >
+                        No clients yet. Create one to start testing your OIDC
+                        flow.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    clients.map((client) => (
+                      <TableRow key={client.id}>
+                        <TableCell className="font-medium">
+                          {client.name}
+                        </TableCell>
+                        <TableCell>
+                          <CopyableCode value={client.id} />
+                        </TableCell>
+                        <TableCell className="max-w-[280px] truncate font-mono text-xs">
+                          {client.redirect_uri}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {formatDateTime(client.created_at)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              client.revoked_at ? "destructive" : "default"
+                            }
+                          >
+                            {client.revoked_at ? "revoked" : "active"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <ClientActions
+                            client={client}
+                            updateClientAction={updateClientAction}
+                            revokeClientAction={revokeClientAction}
+                            deleteClientAction={deleteClientAction}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 

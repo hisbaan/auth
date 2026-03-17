@@ -7,17 +7,22 @@ import { buildAuthorizeSuccessUrl, isAllowedCallbackUrl } from "@/lib/callback";
 import { COOKIE_DOMAIN, COOKIE_SECURE } from "@/lib/config";
 import {
 	addUserRole,
+	createCurrentUserClient,
 	createRole,
+	deleteCurrentUserClient,
 	deleteCurrentUser,
 	deleteRole,
 	listAdminUserEvents,
 	listAdminUserRefreshTokens,
+	listCurrentUserClients,
 	loginWithPassword,
 	logout,
 	registerUser,
+	revokeCurrentUserClient,
 	removeUserRole,
 	resetPassword,
 	sendForgotPassword,
+	updateCurrentUserClient,
 	updateCurrentPassword,
 	updateCurrentUser,
 	verifyEmail,
@@ -208,6 +213,178 @@ export async function deleteAccountAction() {
   await clearAuthCookies();
   await setFlash("success", "Account deleted");
   redirect("/");
+}
+
+export async function createClientAction(formData: FormData) {
+	const { name, parsedRedirectURI, allowedScopes, error } = parseClientForm(formData);
+	if (error || !parsedRedirectURI) {
+		await setFlash("error", error ?? "Invalid client data");
+		redirect("/account");
+	}
+
+	const cookieStore = await cookies();
+	const result = await createCurrentUserClient(cookieStore.toString(), {
+		name,
+		redirectURI: parsedRedirectURI.toString(),
+		allowedScopes,
+	});
+	if (!result.ok) {
+		await setFlash("error", "Unable to create client");
+		redirect("/account");
+	}
+
+	await setFlash("success", "Client created");
+	redirect("/account");
+}
+
+export async function updateClientAction(formData: FormData) {
+	const clientId = String(formData.get("client_id") ?? "").trim();
+	if (!clientId) {
+		await setFlash("error", "Client ID is required");
+		redirect("/account");
+	}
+
+	const { name, parsedRedirectURI, allowedScopes, error } = parseClientForm(formData);
+	if (error || !parsedRedirectURI) {
+		await setFlash("error", error ?? "Invalid client data");
+		redirect("/account");
+	}
+
+	const cookieStore = await cookies();
+	const result = await updateCurrentUserClient(cookieStore.toString(), clientId, {
+		name,
+		redirectURI: parsedRedirectURI.toString(),
+		allowedScopes,
+	});
+	if (!result.ok) {
+		await setFlash("error", "Unable to update client");
+		redirect("/account");
+	}
+
+	await setFlash("success", "Client updated");
+	redirect("/account");
+}
+
+type ParsedClientForm = {
+	name: string;
+	parsedRedirectURI?: URL;
+	allowedScopes: string[];
+	error: string | null;
+};
+
+function parseClientForm(formData: FormData): ParsedClientForm {
+
+	const name = String(formData.get("name") ?? "").trim();
+	const redirectURI = String(formData.get("redirect_uri") ?? "").trim();
+	const allowedScopesInput = String(formData.get("allowed_scopes") ?? "").trim();
+
+	if (!name || !redirectURI || !allowedScopesInput) {
+		return {
+			name: "",
+			parsedRedirectURI: undefined,
+			allowedScopes: [] as string[],
+			error: "Name, redirect URI, and scopes are required",
+		};
+	}
+
+	let parsedRedirectURI: URL;
+	try {
+		parsedRedirectURI = new URL(redirectURI);
+	} catch {
+		return {
+			name: "",
+			parsedRedirectURI: undefined,
+			allowedScopes: [] as string[],
+			error: "Redirect URI must be a valid URL",
+		};
+	}
+
+	if (parsedRedirectURI.protocol !== "http:" && parsedRedirectURI.protocol !== "https:") {
+		return {
+			name: "",
+			parsedRedirectURI: undefined,
+			allowedScopes: [] as string[],
+			error: "Redirect URI must use http or https",
+		};
+	}
+
+	const allowedScopes = Array.from(
+		new Set(
+			allowedScopesInput
+				.split(/\s+/)
+				.map((scope) => scope.trim())
+				.filter(Boolean),
+		),
+	);
+
+	if (allowedScopes.length === 0) {
+		return {
+			name: "",
+			parsedRedirectURI: undefined,
+			allowedScopes: [] as string[],
+			error: "At least one allowed scope is required",
+		};
+	}
+
+	if (!allowedScopes.includes("openid")) {
+		allowedScopes.unshift("openid");
+	}
+
+	return {
+		name,
+		parsedRedirectURI,
+		allowedScopes,
+		error: null,
+	};
+}
+
+export async function revokeClientAction(formData: FormData) {
+	const clientId = String(formData.get("client_id") ?? "").trim();
+	if (!clientId) {
+		await setFlash("error", "Client ID is required");
+		redirect("/account");
+	}
+
+	const cookieStore = await cookies();
+	const result = await revokeCurrentUserClient(cookieStore.toString(), clientId);
+	if (!result.ok) {
+		await setFlash("error", "Unable to revoke client");
+		redirect("/account");
+	}
+
+	await setFlash("success", "Client revoked");
+	redirect("/account");
+}
+
+export async function deleteClientAction(formData: FormData) {
+	const clientId = String(formData.get("client_id") ?? "").trim();
+	if (!clientId) {
+		await setFlash("error", "Client ID is required");
+		redirect("/account");
+	}
+
+	const cookieStore = await cookies();
+	const result = await deleteCurrentUserClient(cookieStore.toString(), clientId);
+	if (!result.ok) {
+		await setFlash("error", "Unable to delete client");
+		redirect("/account");
+	}
+
+	await setFlash("success", "Client deleted");
+	redirect("/account");
+}
+
+export async function listCurrentUserClientsAction(cursor?: string, limit = 20) {
+	const cookieStore = await cookies();
+	const response = await listCurrentUserClients(cookieStore.toString(), {
+		cursor,
+		limit,
+	});
+	if (!response) {
+		return { clients: [], nextCursor: undefined, error: "Unable to load clients" };
+	}
+
+	return { ...response, error: undefined };
 }
 
 export async function createRoleAction(formData: FormData) {

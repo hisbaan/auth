@@ -14,6 +14,7 @@ type UsersService struct {
 	emailService  *emails.EmailService
 
 	userRepo                   repositories.UserRepository
+	clientRepo                 repositories.ClientRepository
 	roleRepo                   repositories.RoleRepository
 	refreshTokenRepo           repositories.RefreshTokenRepository
 	emailVerificationTokenRepo repositories.EmailVerificationTokenRepository
@@ -27,6 +28,7 @@ func NewUsersService(db *sql.DB, jwtSigningKey ed25519.PrivateKey, issuer string
 		issuer:                     issuer,
 		emailService:               emailService,
 		userRepo:                   repositories.NewUserRepository(db),
+		clientRepo:                 repositories.NewClientRepository(db),
 		roleRepo:                   repositories.NewRoleRepository(db),
 		refreshTokenRepo:           repositories.NewRefreshTokenRepository(db),
 		emailVerificationTokenRepo: repositories.NewEmailVerificationTokenRepository(db),
