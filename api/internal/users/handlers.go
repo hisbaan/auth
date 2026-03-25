@@ -7,6 +7,7 @@ import (
 	"auth/internal/jet/postgres/public/model"
 	"auth/internal/utils"
 	"auth/internal/utils/stringutil"
+	"auth/internal/utils/tokenutil"
 	"auth/internal/utils/ulidutil"
 	"context"
 	"net/url"
@@ -81,7 +82,7 @@ func (s *UsersService) UpdateUser(ctx context.Context, userID ulid.ULID, params 
 		})
 		s.emailVerificationTokenRepo.RevokeByUserID(userID)
 
-		token, hashedToken := auth.GenerateResetToken()
+		token, hashedToken := tokenutil.Generate()
 		emailVerificationTokenModel := model.EmailVerificationTokens{
 			ID:        ulid.Make().Bytes(),
 			UserID:    user.ID,
@@ -94,7 +95,7 @@ func (s *UsersService) UpdateUser(ctx context.Context, userID ulid.ULID, params 
 		events.Log(ctx, &s.eventRepo, events.UserEmailVerificationCreated, &userID, events.UserEmailVerificationCreatedData{
 			Email: params.Email,
 		})
-		urlEncodedToken := auth.URLEncodeToken(token)
+		urlEncodedToken := tokenutil.URLEncode(token)
 
 		s.emailService.SendVerifyEmail(params.Email, params.Username, urlEncodedToken)
 	}

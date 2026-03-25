@@ -164,6 +164,19 @@ table "refresh_tokens" {
     type = bytea
     null = false
   }
+  column "client_id" {
+    type = bytea
+    null = true
+  }
+  column "authorization_id" {
+    type = bytea
+    null = true
+  }
+  column "token_source" {
+    type = text
+    null = false
+    default = sql("'self'")
+  }
   column "parent_id" {
     type = bytea
     null = true
@@ -197,6 +210,16 @@ table "refresh_tokens" {
     ref_columns = [table.refresh_tokens.column.id]
     on_delete = "CASCADE"
   }
+  foreign_key "fk_refresh_tokens_client_id" {
+    columns = [column.client_id]
+    ref_columns = [table.clients.column.id]
+    on_delete = "CASCADE"
+  }
+  foreign_key "fk_refresh_tokens_authorization_id" {
+    columns = [column.authorization_id]
+    ref_columns = [table.user_client_authorizations.column.id]
+    on_delete = "CASCADE"
+  }
   foreign_key "fk_refresh_tokens_user_id" {
     columns = [column.user_id]
     ref_columns = [table.users.column.id]
@@ -204,6 +227,12 @@ table "refresh_tokens" {
   }
   index "idx_refresh_tokens_user" {
     columns = [column.user_id]
+  }
+  index "idx_refresh_tokens_client" {
+    columns = [column.client_id]
+  }
+  index "idx_refresh_tokens_authorization" {
+    columns = [column.authorization_id]
   }
 }
 
@@ -285,6 +314,147 @@ table "email_verification_tokens" {
   }
   index "idx_email_verification_tokens_user" {
     columns = [column.user_id]
+  }
+}
+
+table "authorization_codes" {
+  schema = schema.public
+
+  column "id" {
+    type = bytea
+    null = false
+  }
+  column "code_hash" {
+    type = bytea
+    null = false
+  }
+  column "user_id" {
+    type = bytea
+    null = false
+  }
+  column "client_id" {
+    type = bytea
+    null = false
+  }
+  column "redirect_uri" {
+    type = text
+    null = false
+  }
+  column "scopes" {
+    type = sql("text[]")
+    null = false
+  }
+  column "code_challenge" {
+    type = text
+    null = false
+  }
+  column "code_challenge_method" {
+    type = text
+    null = false
+  }
+  column "nonce" {
+    type = text
+    null = true
+  }
+  column "expires_at" {
+    type = timestamptz
+    null = false
+  }
+  column "used_at" {
+    type = timestamptz
+    null = true
+  }
+  column "created_at" {
+    type = timestamptz
+    null = false
+    default = sql("now()")
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "fk_authorization_codes_user_id" {
+    columns = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete = CASCADE
+  }
+  foreign_key "fk_authorization_codes_client_id" {
+    columns = [column.client_id]
+    ref_columns = [table.clients.column.id]
+    on_delete = CASCADE
+  }
+  index "idx_authorization_codes_code_hash" {
+    unique  = true
+    columns = [column.code_hash]
+  }
+  index "idx_authorization_codes_user" {
+    columns = [column.user_id]
+  }
+  index "idx_authorization_codes_client" {
+    columns = [column.client_id]
+  }
+}
+
+table "user_client_authorizations" {
+  schema = schema.public
+
+  column "id" {
+    type = bytea
+    null = false
+  }
+  column "user_id" {
+    type = bytea
+    null = false
+  }
+  column "client_id" {
+    type = bytea
+    null = false
+  }
+  column "granted_scopes" {
+    type = sql("text[]")
+    null = false
+  }
+  column "last_authorized_at" {
+    type = timestamptz
+    null = false
+  }
+  column "revoked_at" {
+    type = timestamptz
+    null = true
+  }
+  column "created_at" {
+    type = timestamptz
+    null = false
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type = timestamptz
+    null = false
+    default = sql("now()")
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "fk_user_client_authorizations_user_id" {
+    columns = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete = CASCADE
+  }
+  foreign_key "fk_user_client_authorizations_client_id" {
+    columns = [column.client_id]
+    ref_columns = [table.clients.column.id]
+    on_delete = CASCADE
+  }
+  index "idx_user_client_authorizations_user_client" {
+    unique  = true
+    columns = [column.user_id, column.client_id]
+  }
+  index "idx_user_client_authorizations_user" {
+    columns = [column.user_id]
+  }
+  index "idx_user_client_authorizations_client" {
+    columns = [column.client_id]
   }
 }
 

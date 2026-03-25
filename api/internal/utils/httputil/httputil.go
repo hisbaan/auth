@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"net/url"
 )
 
 type ClientInfo struct {
@@ -35,8 +36,26 @@ func HandleError(w http.ResponseWriter, err error) {
 
 func JSONResponse(w http.ResponseWriter, status int, response any) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(response)
+}
+
+func WithQuery(rawURL string, values url.Values) (string, error) {
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return "", err
+	}
+
+	query := parsedURL.Query()
+	for key, entries := range values {
+		query.Del(key)
+		for _, entry := range entries {
+			query.Add(key, entry)
+		}
+	}
+
+	parsedURL.RawQuery = query.Encode()
+	return parsedURL.String(), nil
 }
 
 func ClientInfoFromRequest(r *http.Request) ClientInfo {

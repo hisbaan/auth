@@ -1,4 +1,4 @@
-h1:w+EP7vWztOFOT8aylrDcTMLiuRyq1vRxTNgkR7IFIb4=
+h1:LFgjkqqh+XAH3ivDZpPuitZHDWbdG63TKQmIvvOdtLg=
 20260202013949_add_users.sql h1:0dI3m7JqBwiuea7jS/QcoMakPM+HDj8vmaXF3iKvQKY=
 20260207180419_add_refresh_tokens.sql h1:XUC9xWpi11J0pGSBHQenF4WzKVo9FWNnIPorAH0WtJ4=
 20260215021359_refresh_token_on_delete_cascade.sql h1:dhBExhYeee1bGnu2zd/j5T2viRWeLnkbcYRuYcicuH8=
@@ -9,3 +9,5 @@ h1:w+EP7vWztOFOT8aylrDcTMLiuRyq1vRxTNgkR7IFIb4=
 20260228184011_roles.sql h1:vDBCdholTsR4wxXbnYpdSsi7bq/v6AUIqku32Sy08Fo=
 20260306155115_events.sql h1:tJruq6lC9bW1DEXgh0w1L6aoE0sNC5CY1G7qPHHiIIM=
 20260311021957_clients.sql h1:xLaleqzERRyNcJ9GG4J6oEOjJdih61N0fRwgk7aTnIs=
+20260317120000_authorization_codes.sql h1:WHPtd/Yt59w31GOp5xXflOZZNT1mpIDdbK4ACjPMmOg=
+20260325051554_user_client_authorizations.sql h1:rYwF2CcPvEtveCgNoDyPHzCx5s7w8JqJxXmAMxJvSYk=

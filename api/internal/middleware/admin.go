@@ -4,13 +4,13 @@ import (
 	"net/http"
 	"slices"
 
-	"auth/internal/auth"
+	sessiontokens "auth/internal/session_tokens"
 )
 
 func RequireAdmin(issuer string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			claims, ok := r.Context().Value(AuthContextKey).(*auth.AccessClaims)
+			claims, ok := r.Context().Value(AuthContextKey).(*sessiontokens.AccessClaims)
 			if !ok {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return

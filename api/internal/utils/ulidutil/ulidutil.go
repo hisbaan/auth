@@ -24,6 +24,14 @@ func MustFromBytes(b []byte) ulid.ULID {
 	return u
 }
 
+func MustPtrFromBytes(b *[]byte) *ulid.ULID {
+	if b == nil {
+		return nil
+	}
+	u := MustFromBytes(*b)
+	return &u
+}
+
 func ToPrefixed(prefix string, id ulid.ULID) string {
 	return prefix + "_" + id.String()
 }

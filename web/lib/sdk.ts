@@ -1,6 +1,7 @@
 import { API_BASE_URL } from "@/lib/config";
 import type {
 	Client,
+	AuthorizeClientInfo,
 	ListEventsResponse,
 	ListClientsResponse,
 	ListRefreshTokensResponse,
@@ -245,6 +246,28 @@ export async function deleteCurrentUserClient(cookieHeader: string, clientId: st
 	return sdkRequest<void>(`/users/me/clients/${encodeURIComponent(clientId)}`, {
 		method: "DELETE",
 		cookieHeader,
+	});
+}
+
+export async function getAuthorizeClientInfo(cookieHeader: string, clientId: string): Promise<AuthorizeClientInfo | null> {
+	const result = await sdkRequest<AuthorizeClientInfo>(`/authorize/client-info?client_id=${encodeURIComponent(clientId)}`, {
+		cookieHeader,
+	});
+	if (!result.ok || !result.data) {
+		return null;
+	}
+
+	return result.data;
+}
+
+export async function grantAuthorizeConsent(cookieHeader: string, clientId: string, scope: string) {
+	return sdkRequest<void>("/authorize/consent", {
+		method: "POST",
+		cookieHeader,
+		body: {
+			client_id: clientId,
+			scope,
+		},
 	});
 }
 

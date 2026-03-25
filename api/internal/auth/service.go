@@ -3,20 +3,22 @@ package auth
 import (
 	"auth/internal/emails"
 	"auth/internal/repositories"
+	sessiontokens "auth/internal/session_tokens"
 	"crypto/ed25519"
 	"database/sql"
 	"time"
 )
 
 type AuthService struct {
-	db                 *sql.DB
-	jwtSigningKey      ed25519.PrivateKey
-	jwtSigningKeyID    string
-	issuer             string
-	cookieDomain       string
-	accessTokenExpiry  time.Duration
-	refreshTokenExpiry time.Duration
-	emailService       *emails.EmailService
+	db                  *sql.DB
+	jwtSigningKey       ed25519.PrivateKey
+	jwtSigningKeyID     string
+	issuer              string
+	cookieDomain        string
+	accessTokenExpiry   time.Duration
+	refreshTokenExpiry  time.Duration
+	emailService        *emails.EmailService
+	sessionTokenService sessiontokens.SessionTokenService
 
 	userRepo                   repositories.UserRepository
 	roleRepo                   repositories.RoleRepository
@@ -33,9 +35,10 @@ func NewAuthService(db *sql.DB, signingKey ed25519.PrivateKey, signingKeyID stri
 		jwtSigningKeyID:            signingKeyID,
 		issuer:                     issuer,
 		cookieDomain:               cookieDomain,
-		accessTokenExpiry:          15 * time.Minute,
-		refreshTokenExpiry:         168 * time.Hour, // 7 days
+		accessTokenExpiry:          time.Duration(15) * time.Minute,
+		refreshTokenExpiry:         time.Duration(168) * time.Hour, // 7 days
 		emailService:               emailService,
+		sessionTokenService:        sessiontokens.NewSessionTokenService(signingKey, signingKeyID, issuer, time.Duration(15)*time.Minute, time.Duration(168)*time.Hour, repositories.NewRoleRepository(db), repositories.NewRefreshTokenRepository(db), repositories.NewEventRepository(db)),
 		userRepo:                   repositories.NewUserRepository(db),
 		roleRepo:                   repositories.NewRoleRepository(db),
 		refreshTokenRepo:           repositories.NewRefreshTokenRepository(db),

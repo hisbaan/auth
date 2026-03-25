@@ -4,9 +4,9 @@ import (
 	"auth/internal/apperror"
 	"auth/internal/events"
 	"auth/internal/jet/postgres/public/model"
-	"auth/internal/utils"
-	"auth/internal/utils/httputil"
+	sessiontokens "auth/internal/session_tokens"
 	"auth/internal/utils/jwtutil"
+	"auth/internal/utils/tokenutil"
 	"auth/internal/utils/ulidutil"
 	"context"
 	"crypto/ed25519"
@@ -53,7 +53,7 @@ func (s *AuthService) CreateUser(ctx context.Context, params CreateUserParams) e
 	events.Log(ctx, &s.eventRepo, events.UserCreated, &userID, events.UserCreatedData{})
 	s.emailVerificationTokenRepo.RevokeByUserID(userID)
 
-	token, hashedToken := GenerateResetToken()
+	token, hashedToken := tokenutil.Generate()
 	emailVerificationTokenModel := model.EmailVerificationTokens{
 		ID:        ulid.Make().Bytes(),
 		UserID:    user.ID,
@@ -66,7 +66,7 @@ func (s *AuthService) CreateUser(ctx context.Context, params CreateUserParams) e
 	events.Log(ctx, &s.eventRepo, events.UserEmailVerificationCreated, &userID, events.UserEmailVerificationCreatedData{
 		Email: params.Email,
 	})
-	urlEncodedToken := URLEncodeToken(token)
+	urlEncodedToken := tokenutil.URLEncode(token)
 
 	s.emailService.SendVerifyEmail(params.Email, params.Username, urlEncodedToken)
 
@@ -108,80 +108,25 @@ func (s *AuthService) Login(ctx context.Context, params LoginParams) (LoginRespo
 		return LoginResponse{}, apperror.NewUnauthorized("Invalid credentials")
 	}
 
-	clientInfo := clientInfoFromContext(ctx)
-	ip := clientInfo.IP
-	userAgent := clientInfo.UserAgent
-
 	userID := ulidutil.MustFromBytes(user.ID)
 	events.Log(ctx, &s.eventRepo, events.AuthenticationPasswordSucceeded, &userID, events.AuthenticationPasswordSucceededData{})
-	roles, err := s.roleRepo.GetByUserID(userID)
+	tokens, err := s.sessionTokenService.IssueSessionTokens(ctx, sessiontokens.IssueSessionTokensParams{
+		UserID:               userID,
+		TokenSource:          sessiontokens.TokenSourceSelf,
+		ParentRefreshTokenID: nil,
+	})
 	if err != nil {
 		return LoginResponse{}, err
-	}
-
-	accessToken, err := GenerateAccessToken(GenerateAccessTokenParams{
-		privateKey: s.jwtSigningKey,
-		keyID:      s.jwtSigningKeyID,
-		issuer:     s.issuer,
-		userID:     ulidutil.MustFromBytes(user.ID),
-		roles:      utils.Map(roles, func(role model.Roles) string { return role.Name }),
-		expiry:     s.accessTokenExpiry,
-	})
-	if err != nil {
-		return LoginResponse{}, apperror.NewInternalServerError("Token generation error")
-	}
-	events.Log(ctx, &s.eventRepo, events.AccessTokenCreated, &userID, events.AccessTokenCreatedData{})
-
-	refreshTokenModel := model.RefreshTokens{
-		ID:       ulid.Make().Bytes(),
-		UserID:   userID.Bytes(),
-		ParentID: nil,
-		IssuedAt: time.Now(),
-		// TODO refactor this so we don't have the magic number everywhere
-		ExpiresAt: time.Now().Add(time.Duration(168) * time.Hour),
-		RevokedAt: nil,
-		IPAddress: ip,
-		UserAgent: userAgent,
-	}
-	if err := s.refreshTokenRepo.Create(refreshTokenModel); err != nil {
-		return LoginResponse{}, err
-	}
-	events.Log(ctx, &s.eventRepo, events.RefreshTokenCreated, &userID, events.RefreshTokenCreatedData{
-		RefreshTokenID: ulidutil.ToPrefixed("token", ulidutil.MustFromBytes(refreshTokenModel.ID)),
-	})
-
-	refreshToken, err := GenerateRefreshToken(GenerateRefreshTokenParams{
-		privateKey: s.jwtSigningKey,
-		keyID:      s.jwtSigningKeyID,
-		issuer:     s.issuer,
-		userID:     userID,
-		tokenID:    ulidutil.MustFromBytes(refreshTokenModel.ID),
-		expiry:     s.refreshTokenExpiry,
-	})
-	if err != nil {
-		return LoginResponse{}, apperror.NewInternalServerError("Token generation error")
 	}
 
 	response := LoginResponse{
-		AccessToken:  accessToken,
+		AccessToken:  tokens.AccessToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    900,
-		RefreshToken: refreshToken,
+		ExpiresIn:    tokens.ExpiresIn,
+		RefreshToken: tokens.RefreshToken,
 	}
 
 	return response, nil
-}
-
-func clientInfoFromContext(ctx context.Context) httputil.ClientInfo {
-	info, ok := httputil.ClientInfoFromContext(ctx)
-	if !ok || info.IP == "" {
-		return httputil.ClientInfo{IP: "0.0.0.0", UserAgent: "unknown"}
-	}
-	if info.UserAgent == "" {
-		info.UserAgent = "unknown"
-	}
-
-	return info
 }
 
 func (s *AuthService) Logout(ctx context.Context, token string) {
@@ -189,7 +134,7 @@ func (s *AuthService) Logout(ctx context.Context, token string) {
 		return
 	}
 
-	_, claims, err := jwtutil.ValidateToken[*AccessClaims](s.jwtSigningKey.Public().(ed25519.PublicKey), token, &AccessClaims{})
+	_, claims, err := jwtutil.ValidateToken[*sessiontokens.AccessClaims](s.jwtSigningKey.Public().(ed25519.PublicKey), token, &sessiontokens.AccessClaims{})
 	if err != nil {
 		return
 	}
@@ -219,7 +164,7 @@ type RefreshResponse struct {
 }
 
 func (s *AuthService) Refresh(ctx context.Context, params RefreshParams) (RefreshResponse, error) {
-	_, claims, err := jwtutil.ValidateToken[*RefreshClaims](s.jwtSigningKey.Public().(ed25519.PublicKey), params.RefreshToken, &RefreshClaims{})
+	_, claims, err := jwtutil.ValidateToken[*sessiontokens.RefreshClaims](s.jwtSigningKey.Public().(ed25519.PublicKey), params.RefreshToken, &sessiontokens.RefreshClaims{})
 	if err != nil {
 		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, nil, events.AuthenticationRefreshFailedData{
 			Reason: events.EventReasonInvalidToken,
@@ -280,70 +225,34 @@ func (s *AuthService) Refresh(ctx context.Context, params RefreshParams) (Refres
 		return RefreshResponse{}, apperror.NewUnauthorized("Invalid token")
 	}
 
-	clientInfo := clientInfoFromContext(ctx)
-	ip := clientInfo.IP
-	userAgent := clientInfo.UserAgent
-
 	refreshTokenULID := ulidutil.MustFromBytes(refreshToken.ID)
 	if err := s.refreshTokenRepo.Revoke(refreshTokenULID); err != nil {
 		return RefreshResponse{}, err
 	}
+	events.Log(ctx, &s.eventRepo, events.RefreshTokenRevoked, &refreshTokenUserID, events.RefreshTokenRevokedData{
+		RefreshTokenID: refreshTokenIDValue,
+	})
 
-	roles, err := s.roleRepo.GetByUserID(refreshTokenUserID)
-	if err != nil {
-		return RefreshResponse{}, err
-	}
-	accessToken, err := GenerateAccessToken(GenerateAccessTokenParams{
-		privateKey: s.jwtSigningKey,
-		keyID:      s.jwtSigningKeyID,
-		issuer:     s.issuer,
-		userID:     refreshTokenUserID,
-		roles:      utils.Map(roles, func(role model.Roles) string { return role.Name }),
-		expiry:     s.accessTokenExpiry,
+	tokens, err := s.sessionTokenService.IssueSessionTokens(ctx, sessiontokens.IssueSessionTokensParams{
+		UserID:               refreshTokenUserID,
+		TokenSource:          refreshToken.TokenSource,
+		ClientID:             ulidutil.MustPtrFromBytes(refreshToken.ClientID),
+		AuthorizationID:      ulidutil.MustPtrFromBytes(refreshToken.AuthorizationID),
+		ParentRefreshTokenID: &refreshToken.ID,
 	})
 	if err != nil {
-		return RefreshResponse{}, apperror.NewInternalServerError("Token generation error")
-	}
-	events.Log(ctx, &s.eventRepo, events.AccessTokenCreated, &refreshTokenUserID, events.AccessTokenCreatedData{})
-
-	newRefreshTokenID := ulid.Make()
-	newRefreshTokenModel := model.RefreshTokens{
-		ID:       newRefreshTokenID.Bytes(),
-		UserID:   refreshToken.UserID,
-		ParentID: &refreshToken.ID,
-		IssuedAt: time.Now(),
-		// TODO refactor this so we don't have the magic number everywhere
-		ExpiresAt: time.Now().Add(time.Duration(168) * time.Hour),
-		RevokedAt: nil,
-		IPAddress: ip,
-		UserAgent: userAgent,
-	}
-	if err := s.refreshTokenRepo.Create(newRefreshTokenModel); err != nil {
 		return RefreshResponse{}, err
 	}
 	events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshTokenRotated, &refreshTokenUserID, events.AuthenticationRefreshTokenRotatedData{
 		OldRefreshTokenID: ulidutil.ToPrefixed("token", refreshTokenULID),
-		NewRefreshTokenID: ulidutil.ToPrefixed("token", ulidutil.MustFromBytes(newRefreshTokenModel.ID)),
+		NewRefreshTokenID: ulidutil.ToPrefixed("token", tokens.RefreshTokenID),
 	})
-
-	newRefreshToken, err := GenerateRefreshToken(GenerateRefreshTokenParams{
-		privateKey: s.jwtSigningKey,
-		keyID:      s.jwtSigningKeyID,
-		issuer:     s.issuer,
-		userID:     refreshTokenUserID,
-		tokenID:    ulidutil.MustFromBytes(newRefreshTokenModel.ID),
-		expiry:     s.refreshTokenExpiry,
-	})
-
-	if err != nil {
-		return RefreshResponse{}, apperror.NewInternalServerError("Token generation error")
-	}
 
 	return RefreshResponse{
-		AccessToken:  accessToken,
+		AccessToken:  tokens.AccessToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    900,
-		RefreshToken: newRefreshToken,
+		ExpiresIn:    tokens.ExpiresIn,
+		RefreshToken: tokens.RefreshToken,
 	}, nil
 }
 
@@ -360,7 +269,7 @@ func (s *AuthService) ForgotPassword(ctx context.Context, params ForgotPasswordP
 
 	s.passwordResetTokenRepo.RevokeByUserID(userID)
 
-	token, hashedToken := GenerateResetToken()
+	token, hashedToken := tokenutil.Generate()
 	passwordResetTokenModel := model.PasswordResetTokens{
 		ID:        ulid.Make().Bytes(),
 		UserID:    user.ID,
@@ -373,7 +282,7 @@ func (s *AuthService) ForgotPassword(ctx context.Context, params ForgotPasswordP
 	events.Log(ctx, &s.eventRepo, events.PasswordResetCreated, &userID, events.PasswordResetCreatedData{
 		PasswordResetTokenID: ulidutil.ToPrefixed("password_reset_token", ulidutil.MustFromBytes(passwordResetTokenModel.ID)),
 	})
-	urlEncodedToken := URLEncodeToken(token)
+	urlEncodedToken := tokenutil.URLEncode(token)
 
 	s.emailService.SendForgotPasswordEmail(params.Email, user.Username, urlEncodedToken)
 
@@ -386,7 +295,7 @@ type PasswordResetParams struct {
 }
 
 func (s *AuthService) PasswordReset(ctx context.Context, params PasswordResetParams) error {
-	token, err := URLDecodeToken(params.Token)
+	token, err := tokenutil.URLDecode(params.Token)
 	if err != nil {
 		events.Log(ctx, &s.eventRepo, events.PasswordResetFailed, nil, events.PasswordResetFailedData{
 			Reason: events.EventReasonInvalidToken,
@@ -394,7 +303,7 @@ func (s *AuthService) PasswordReset(ctx context.Context, params PasswordResetPar
 		return apperror.NewBadRequest("Invalid token")
 	}
 
-	hashedToken := HashToken(token)
+	hashedToken := tokenutil.Hash(token)
 	passwordResetToken, err := s.passwordResetTokenRepo.GetByHash(hashedToken)
 	if err != nil {
 		if httpErr, ok := err.(apperror.HTTPError); ok && httpErr.StatusCode() == http.StatusNotFound {
@@ -447,7 +356,7 @@ type VerifyEmailParams struct {
 }
 
 func (s *AuthService) VerifyEmail(ctx context.Context, params VerifyEmailParams) error {
-	token, err := URLDecodeToken(params.Token)
+	token, err := tokenutil.URLDecode(params.Token)
 	if err != nil {
 		events.Log(ctx, &s.eventRepo, events.AuthenticationVerifyEmailFailed, nil, events.AuthenticationVerifyEmailFailedData{
 			Reason: events.EventReasonInvalidToken,
@@ -455,7 +364,7 @@ func (s *AuthService) VerifyEmail(ctx context.Context, params VerifyEmailParams)
 		return apperror.NewBadRequest("Invalid token")
 	}
 
-	hashedToken := HashToken(token)
+	hashedToken := tokenutil.Hash(token)
 
 	verificationToken, err := s.emailVerificationTokenRepo.GetByHash(hashedToken)
 	if err != nil {

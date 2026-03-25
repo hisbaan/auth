@@ -70,3 +70,10 @@ export type ListClientsResponse = {
   clients: Client[];
   next_cursor?: string;
 };
+
+export type AuthorizeClientInfo = {
+	id: string;
+	name: string;
+	redirect_uri: string;
+	allowed_scopes: string[];
+};

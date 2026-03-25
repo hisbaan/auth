@@ -4,7 +4,8 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { buildAuthorizeSuccessUrl, isAllowedCallbackUrl } from "@/lib/callback";
-import { COOKIE_DOMAIN, COOKIE_SECURE } from "@/lib/config";
+import { API_BASE_URL, COOKIE_DOMAIN, COOKIE_SECURE } from "@/lib/config";
+import { withEncodedRequest } from "@/lib/http";
 import {
 	addUserRole,
 	createCurrentUserClient,
@@ -12,6 +13,7 @@ import {
 	deleteCurrentUserClient,
 	deleteCurrentUser,
 	deleteRole,
+	grantAuthorizeConsent,
 	listAdminUserEvents,
 	listAdminUserRefreshTokens,
 	listCurrentUserClients,
@@ -159,6 +161,26 @@ export async function logoutAction() {
   await logout(cookieStore.toString());
   await clearAuthCookies();
   redirect("/");
+}
+
+export async function authorizeConsentAction(formData: FormData) {
+	const request = String(formData.get("request") ?? "").trim();
+	const clientId = String(formData.get("client_id") ?? "").trim();
+	const scope = String(formData.get("scope") ?? "").trim();
+
+	if (!request || !clientId || !scope) {
+		await setFlash("error", "Invalid authorize request");
+		redirect("/");
+	}
+
+	const cookieStore = await cookies();
+	const result = await grantAuthorizeConsent(cookieStore.toString(), clientId, scope);
+	if (!result.ok) {
+		await setFlash("error", "Unable to grant consent");
+		redirect(withEncodedRequest("/authorize", request));
+	}
+
+	redirect(`${API_BASE_URL}/authorize?${request}`);
 }
 
 export async function updateProfileAction(formData: FormData) {

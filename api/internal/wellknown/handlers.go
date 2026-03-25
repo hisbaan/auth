@@ -28,15 +28,17 @@ func (s *WellKnownService) GetOpenIDConfigurationHandler(w http.ResponseWriter, 
 		Issuer:                            s.baseURL,
 		AuthorizationEndpoint:             path.Join(s.baseURL, "authorize"),
 		TokenEndpoint:                     path.Join(s.baseURL, "token"),
+		RevocationEndpoint:                path.Join(s.baseURL, "token/revoke"),
 		UserinfoEndpoint:                  path.Join(s.baseURL, "/userinfo"),
 		JWKSURI:                           path.Join(s.baseURL, "/well-known/jwks.json"),
 		ResponseTypesSupported:            []string{"code"},
 		SubjectTypesSupported:             []string{"public"},
 		IDTokenSigningAlgValuesSupported:  []string{"EdDSA"},
 		ScopesSupported:                   []string{"openid", "profile", "email"},
-		TokenEndpointAuthMethodsSupported: []string{"none", "client_basic_secret"},
+		TokenEndpointAuthMethodsSupported: []string{"none"},
 		CodeChallengeMethodsSupported:     []string{"S256"},
 		GrantTypesSupported:               []string{"authorization_code", "refresh_token"},
+		ClaimsSupported:                   []string{"sub", "preferred_username", "email", "email_verified"},
 	}
 	httputil.JSONResponse(w, http.StatusOK, openIDConfiguration)
 }

@@ -14,6 +14,7 @@ import (
 	"auth/internal/auth"
 	"auth/internal/emails"
 	internalMiddleware "auth/internal/middleware"
+	"auth/internal/oidc"
 	"auth/internal/roles"
 	"auth/internal/users"
 	"auth/internal/wellknown"
@@ -106,6 +107,9 @@ func main() {
 
 	authService := auth.NewAuthService(db, signingKey, cfg.JWTSigningKeyID, cfg.IssuerUrl, emailService, cfg.CookieDomain)
 	r.Mount("/auth", auth.Router(authService))
+
+	oidcService := oidc.NewOIDCService(db, signingKey, cfg.JWTSigningKeyID, cfg.IssuerUrl, cfg.FrontendURL, emailService, cfg.CookieDomain)
+	r.Mount("/", oidc.Router(oidcService, signingKey.Public().(ed25519.PublicKey), cfg.IssuerUrl))
 
 	usersService := users.NewUsersService(db, signingKey, cfg.IssuerUrl, emailService)
 	r.Mount("/users", users.Router(usersService))

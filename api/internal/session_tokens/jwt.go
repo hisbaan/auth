@@ -1,4 +1,4 @@
-package auth
+package sessiontokens
 
 import (
 	"auth/internal/utils/ulidutil"
@@ -9,30 +9,49 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
+const (
+	TokenSourceSelf   = "self"
+	TokenSourceClient = "client"
+)
+
 type GenerateAccessTokenParams struct {
-	privateKey ed25519.PrivateKey
-	keyID      string
-	issuer     string
-	userID     ulid.ULID
-	roles      []string
-	expiry     time.Duration
+	privateKey  ed25519.PrivateKey
+	keyID       string
+	issuer      string
+	userID      ulid.ULID
+	clientID    *ulid.ULID
+	tokenSource string
+	roles       []string
+	expiry      time.Duration
 }
 
 type AccessClaims struct {
-	TokenType string   `json:"token_type"`
-	Roles     []string `json:"roles"`
+	TokenType   string   `json:"token_type"`
+	TokenSource string   `json:"token_source"`
+	ClientID    *string  `json:"client_id,omitempty"`
+	Roles       []string `json:"roles"`
 	jwt.RegisteredClaims
 }
 
 type RefreshClaims struct {
-	TokenType string `json:"token_type"`
+	TokenType   string  `json:"token_type"`
+	TokenSource string  `json:"token_source"`
+	ClientID    *string `json:"client_id,omitempty"`
 	jwt.RegisteredClaims
 }
 
 func GenerateAccessToken(params GenerateAccessTokenParams) (string, error) {
+	var clientID *string
+	if params.clientID != nil {
+		value := ulidutil.ToPrefixed("client", *params.clientID)
+		clientID = &value
+	}
+
 	claims := AccessClaims{
-		TokenType: "access",
-		Roles:     params.roles,
+		TokenType:   "access",
+		TokenSource: params.tokenSource,
+		ClientID:    clientID,
+		Roles:       params.roles,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   ulidutil.ToPrefixed("user", params.userID),
 			Issuer:    params.issuer,
@@ -47,17 +66,27 @@ func GenerateAccessToken(params GenerateAccessTokenParams) (string, error) {
 }
 
 type GenerateRefreshTokenParams struct {
-	privateKey ed25519.PrivateKey
-	keyID      string
-	issuer     string
-	userID     ulid.ULID
-	tokenID    ulid.ULID
-	expiry     time.Duration
+	privateKey  ed25519.PrivateKey
+	keyID       string
+	issuer      string
+	userID      ulid.ULID
+	clientID    *ulid.ULID
+	tokenSource string
+	tokenID     ulid.ULID
+	expiry      time.Duration
 }
 
 func GenerateRefreshToken(params GenerateRefreshTokenParams) (string, error) {
+	var clientID *string
+	if params.clientID != nil {
+		value := ulidutil.ToPrefixed("client", *params.clientID)
+		clientID = &value
+	}
+
 	claims := RefreshClaims{
-		TokenType: "refresh",
+		TokenType:   "refresh",
+		TokenSource: params.tokenSource,
+		ClientID:    clientID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        ulidutil.ToPrefixed("token", params.tokenID),
 			Subject:   ulidutil.ToPrefixed("user", params.userID),

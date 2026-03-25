@@ -17,14 +17,17 @@ type refreshTokensTable struct {
 	postgres.Table
 
 	// Columns
-	ID        postgres.ColumnBytea
-	UserID    postgres.ColumnBytea
-	ParentID  postgres.ColumnBytea
-	IssuedAt  postgres.ColumnTimestampz
-	ExpiresAt postgres.ColumnTimestampz
-	RevokedAt postgres.ColumnTimestampz
-	IPAddress postgres.ColumnString
-	UserAgent postgres.ColumnString
+	ID              postgres.ColumnBytea
+	UserID          postgres.ColumnBytea
+	ParentID        postgres.ColumnBytea
+	IssuedAt        postgres.ColumnTimestampz
+	ExpiresAt       postgres.ColumnTimestampz
+	RevokedAt       postgres.ColumnTimestampz
+	IPAddress       postgres.ColumnString
+	UserAgent       postgres.ColumnString
+	ClientID        postgres.ColumnBytea
+	AuthorizationID postgres.ColumnBytea
+	TokenSource     postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -66,31 +69,37 @@ func newRefreshTokensTable(schemaName, tableName, alias string) *RefreshTokensTa
 
 func newRefreshTokensTableImpl(schemaName, tableName, alias string) refreshTokensTable {
 	var (
-		IDColumn        = postgres.ByteaColumn("id")
-		UserIDColumn    = postgres.ByteaColumn("user_id")
-		ParentIDColumn  = postgres.ByteaColumn("parent_id")
-		IssuedAtColumn  = postgres.TimestampzColumn("issued_at")
-		ExpiresAtColumn = postgres.TimestampzColumn("expires_at")
-		RevokedAtColumn = postgres.TimestampzColumn("revoked_at")
-		IPAddressColumn = postgres.StringColumn("ip_address")
-		UserAgentColumn = postgres.StringColumn("user_agent")
-		allColumns      = postgres.ColumnList{IDColumn, UserIDColumn, ParentIDColumn, IssuedAtColumn, ExpiresAtColumn, RevokedAtColumn, IPAddressColumn, UserAgentColumn}
-		mutableColumns  = postgres.ColumnList{UserIDColumn, ParentIDColumn, IssuedAtColumn, ExpiresAtColumn, RevokedAtColumn, IPAddressColumn, UserAgentColumn}
-		defaultColumns  = postgres.ColumnList{}
+		IDColumn              = postgres.ByteaColumn("id")
+		UserIDColumn          = postgres.ByteaColumn("user_id")
+		ParentIDColumn        = postgres.ByteaColumn("parent_id")
+		IssuedAtColumn        = postgres.TimestampzColumn("issued_at")
+		ExpiresAtColumn       = postgres.TimestampzColumn("expires_at")
+		RevokedAtColumn       = postgres.TimestampzColumn("revoked_at")
+		IPAddressColumn       = postgres.StringColumn("ip_address")
+		UserAgentColumn       = postgres.StringColumn("user_agent")
+		ClientIDColumn        = postgres.ByteaColumn("client_id")
+		AuthorizationIDColumn = postgres.ByteaColumn("authorization_id")
+		TokenSourceColumn     = postgres.StringColumn("token_source")
+		allColumns            = postgres.ColumnList{IDColumn, UserIDColumn, ParentIDColumn, IssuedAtColumn, ExpiresAtColumn, RevokedAtColumn, IPAddressColumn, UserAgentColumn, ClientIDColumn, AuthorizationIDColumn, TokenSourceColumn}
+		mutableColumns        = postgres.ColumnList{UserIDColumn, ParentIDColumn, IssuedAtColumn, ExpiresAtColumn, RevokedAtColumn, IPAddressColumn, UserAgentColumn, ClientIDColumn, AuthorizationIDColumn, TokenSourceColumn}
+		defaultColumns        = postgres.ColumnList{TokenSourceColumn}
 	)
 
 	return refreshTokensTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:        IDColumn,
-		UserID:    UserIDColumn,
-		ParentID:  ParentIDColumn,
-		IssuedAt:  IssuedAtColumn,
-		ExpiresAt: ExpiresAtColumn,
-		RevokedAt: RevokedAtColumn,
-		IPAddress: IPAddressColumn,
-		UserAgent: UserAgentColumn,
+		ID:              IDColumn,
+		UserID:          UserIDColumn,
+		ParentID:        ParentIDColumn,
+		IssuedAt:        IssuedAtColumn,
+		ExpiresAt:       ExpiresAtColumn,
+		RevokedAt:       RevokedAtColumn,
+		IPAddress:       IPAddressColumn,
+		UserAgent:       UserAgentColumn,
+		ClientID:        ClientIDColumn,
+		AuthorizationID: AuthorizationIDColumn,
+		TokenSource:     TokenSourceColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

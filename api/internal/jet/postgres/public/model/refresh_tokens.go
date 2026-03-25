@@ -12,12 +12,15 @@ import (
 )
 
 type RefreshTokens struct {
-	ID        []byte `sql:"primary_key"`
-	UserID    []byte
-	ParentID  *[]byte
-	IssuedAt  time.Time
-	ExpiresAt time.Time
-	RevokedAt *time.Time
-	IPAddress string
-	UserAgent string
+	ID              []byte `sql:"primary_key"`
+	UserID          []byte
+	ParentID        *[]byte
+	IssuedAt        time.Time
+	ExpiresAt       time.Time
+	RevokedAt       *time.Time
+	IPAddress       string
+	UserAgent       string
+	ClientID        *[]byte
+	AuthorizationID *[]byte
+	TokenSource     string
 }
