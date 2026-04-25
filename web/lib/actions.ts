@@ -19,6 +19,7 @@ import {
 	listCurrentUserClients,
 	loginWithPassword,
 	logout,
+	revokeCurrentUserAuthorization,
 	registerUser,
 	revokeCurrentUserClient,
 	removeUserRole,
@@ -256,6 +257,24 @@ export async function createClientAction(formData: FormData) {
 	}
 
 	await setFlash("success", "Client created");
+	redirect("/account");
+}
+
+export async function revokeAuthorizationAction(formData: FormData) {
+	const clientId = String(formData.get("client_id") ?? "").trim();
+	if (!clientId) {
+		await setFlash("error", "Client ID is required");
+		redirect("/account");
+	}
+
+	const cookieStore = await cookies();
+	const result = await revokeCurrentUserAuthorization(cookieStore.toString(), clientId);
+	if (!result.ok) {
+		await setFlash("error", "Unable to disconnect app");
+		redirect("/account");
+	}
+
+	await setFlash("success", "App disconnected");
 	redirect("/account");
 }
 

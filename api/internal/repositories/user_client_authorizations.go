@@ -17,6 +17,12 @@ type UserClientAuthorizationRepository struct {
 	db *sql.DB
 }
 
+type UserClientAuthorizationWithClient struct {
+	model.UserClientAuthorizations
+	ClientName        string
+	ClientRedirectURI string
+}
+
 func NewUserClientAuthorizationRepository(db *sql.DB) UserClientAuthorizationRepository {
 	return UserClientAuthorizationRepository{db: db}
 }
@@ -61,6 +67,48 @@ func (r *UserClientAuthorizationRepository) GetByUserIDAndClientID(userID ulid.U
 	}
 
 	return &authorizations[0], nil
+}
+
+func (r *UserClientAuthorizationRepository) ListActiveByUserID(userID ulid.ULID) ([]model.UserClientAuthorizations, error) {
+	query := UserClientAuthorizations.SELECT(UserClientAuthorizations.AllColumns).
+		WHERE(AND(
+			UserClientAuthorizations.UserID.EQ(Bytea(userID.Bytes())),
+			UserClientAuthorizations.RevokedAt.IS_NULL(),
+		)).
+		ORDER_BY(UserClientAuthorizations.LastAuthorizedAt.DESC())
+
+	var authorizations []model.UserClientAuthorizations
+	err := query.Query(r.db, &authorizations)
+	if err != nil {
+		log.Printf("[ERROR] ListActiveByUserID user client authorizations query failed: %v", err)
+		return nil, apperror.NewInternalServerError("Database query error")
+	}
+
+	return authorizations, nil
+}
+
+func (r *UserClientAuthorizationRepository) ListActiveWithClientByUserID(userID ulid.ULID) ([]UserClientAuthorizationWithClient, error) {
+	query := SELECT(
+		UserClientAuthorizations.AllColumns,
+		Clients.Name.AS("userclientauthorizationwithclient.client_name"),
+		Clients.RedirectURI.AS("userclientauthorizationwithclient.client_redirect_uri"),
+	).
+		FROM(UserClientAuthorizations.INNER_JOIN(Clients, UserClientAuthorizations.ClientID.EQ(Clients.ID))).
+		WHERE(AND(
+			UserClientAuthorizations.UserID.EQ(Bytea(userID.Bytes())),
+			UserClientAuthorizations.RevokedAt.IS_NULL(),
+			Clients.RevokedAt.IS_NULL(),
+		)).
+		ORDER_BY(UserClientAuthorizations.LastAuthorizedAt.DESC())
+
+	var authorizations []UserClientAuthorizationWithClient
+	err := query.Query(r.db, &authorizations)
+	if err != nil {
+		log.Printf("[ERROR] ListActiveWithClientByUserID user client authorizations query failed: %v", err)
+		return nil, apperror.NewInternalServerError("Database query error")
+	}
+
+	return authorizations, nil
 }
 
 func (r *UserClientAuthorizationRepository) Create(authorization model.UserClientAuthorizations) error {
@@ -144,6 +192,22 @@ func (r *UserClientAuthorizationRepository) Revoke(id ulid.ULID) error {
 		Exec(r.db)
 	if err != nil {
 		log.Printf("[ERROR] Revoke user client authorization failed: %v", err)
+		return apperror.NewInternalServerError("Database query error")
+	}
+
+	return nil
+}
+
+func (r *UserClientAuthorizationRepository) RevokeByClientID(clientID ulid.ULID) error {
+	_, err := UserClientAuthorizations.UPDATE().
+		SET(
+			UserClientAuthorizations.RevokedAt.SET(TimestampzT(time.Now())),
+			UserClientAuthorizations.UpdatedAt.SET(TimestampzT(time.Now())),
+		).
+		WHERE(AND(UserClientAuthorizations.ClientID.EQ(Bytea(clientID.Bytes())), UserClientAuthorizations.RevokedAt.IS_NULL())).
+		Exec(r.db)
+	if err != nil {
+		log.Printf("[ERROR] Revoke user client authorizations by clientID failed: %v", err)
 		return apperror.NewInternalServerError("Database query error")
 	}
 

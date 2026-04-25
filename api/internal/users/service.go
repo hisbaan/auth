@@ -13,25 +13,27 @@ type UsersService struct {
 	issuer        string
 	emailService  *emails.EmailService
 
-	userRepo                   repositories.UserRepository
-	clientRepo                 repositories.ClientRepository
-	roleRepo                   repositories.RoleRepository
-	refreshTokenRepo           repositories.RefreshTokenRepository
-	emailVerificationTokenRepo repositories.EmailVerificationTokenRepository
-	eventRepo                  repositories.EventRepository
+	userRepo                    repositories.UserRepository
+	clientRepo                  repositories.ClientRepository
+	userClientAuthorizationRepo repositories.UserClientAuthorizationRepository
+	roleRepo                    repositories.RoleRepository
+	refreshTokenRepo            repositories.RefreshTokenRepository
+	emailVerificationTokenRepo  repositories.EmailVerificationTokenRepository
+	eventRepo                   repositories.EventRepository
 }
 
 func NewUsersService(db *sql.DB, jwtSigningKey ed25519.PrivateKey, issuer string, emailService *emails.EmailService) *UsersService {
 	return &UsersService{
-		db:                         db,
-		jwtSigningKey:              jwtSigningKey,
-		issuer:                     issuer,
-		emailService:               emailService,
-		userRepo:                   repositories.NewUserRepository(db),
-		clientRepo:                 repositories.NewClientRepository(db),
-		roleRepo:                   repositories.NewRoleRepository(db),
-		refreshTokenRepo:           repositories.NewRefreshTokenRepository(db),
-		emailVerificationTokenRepo: repositories.NewEmailVerificationTokenRepository(db),
-		eventRepo:                  repositories.NewEventRepository(db),
+		db:                          db,
+		jwtSigningKey:               jwtSigningKey,
+		issuer:                      issuer,
+		emailService:                emailService,
+		userRepo:                    repositories.NewUserRepository(db),
+		clientRepo:                  repositories.NewClientRepository(db),
+		userClientAuthorizationRepo: repositories.NewUserClientAuthorizationRepository(db),
+		roleRepo:                    repositories.NewRoleRepository(db),
+		refreshTokenRepo:            repositories.NewRefreshTokenRepository(db),
+		emailVerificationTokenRepo:  repositories.NewEmailVerificationTokenRepository(db),
+		eventRepo:                   repositories.NewEventRepository(db),
 	}
 }

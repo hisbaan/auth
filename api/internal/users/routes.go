@@ -157,6 +157,45 @@ func Router(s *UsersService) http.Handler {
 		httputil.JSONResponse(w, http.StatusOK, response)
 	})
 
+	r.Get("/me/authorizations", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		response, err := s.ListClientAuthorizations(userID)
+		if err != nil {
+			httputil.HandleError(w, err)
+			return
+		}
+
+		httputil.JSONResponse(w, http.StatusOK, response)
+	})
+
+	r.Post("/me/authorizations/{clientId}/revoke", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		clientID, err := ulidutil.FromPrefixed("client", chi.URLParam(r, "clientId"))
+		if err != nil {
+			http.Error(w, "Invalid client ID", http.StatusBadRequest)
+			return
+		}
+
+		if err := s.RevokeClientAuthorization(r.Context(), userID, clientID); err != nil {
+			httputil.HandleError(w, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	//	@Summary		Create client
 	//	@Description	Creates an OAuth client for the authenticated user
 	//	@Tags			users

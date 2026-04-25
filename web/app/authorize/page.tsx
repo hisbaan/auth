@@ -8,25 +8,11 @@ import { authorizeConsentAction } from "@/lib/actions";
 import { withAuth } from "@/lib/auth";
 import { API_BASE_URL, DOCS_URL } from "@/lib/config";
 import { parseEncodedRequest, withEncodedRequest } from "@/lib/http";
+import { getOIDCScopeDetail } from "@/lib/oidc";
 import { getAuthorizeClientInfo } from "@/lib/sdk";
 
 type AuthorizePageProps = {
 	searchParams: Promise<{ request?: string }>;
-};
-
-const scopeLabels: Record<string, { title: string; description: string }> = {
-	openid: {
-		title: "Confirm your identity",
-		description: "Lets the app verify who you are using your auth account.",
-	},
-	profile: {
-		title: "View your profile",
-		description: "Shares your username with the app.",
-	},
-	email: {
-		title: "View your email",
-		description: "Shares your email address and verification status.",
-	},
 };
 
 export default async function AuthorizePage({ searchParams }: AuthorizePageProps) {
@@ -113,10 +99,7 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 						</CardHeader>
 						<CardContent className="space-y-3">
 							{requestedScopes.map((requestedScope) => {
-								const details = scopeLabels[requestedScope] ?? {
-									title: requestedScope,
-									description: "Allows the app to use this scope.",
-								};
+								const details = getOIDCScopeDetail(requestedScope);
 
 								return (
 									<div key={requestedScope} className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">

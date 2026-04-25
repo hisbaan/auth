@@ -24,13 +24,15 @@ import {
   createClientAction,
   deleteClientAction,
   deleteAccountAction,
+  revokeAuthorizationAction,
   revokeClientAction,
   updateClientAction,
   updatePasswordAction,
   updateProfileAction,
 } from "@/lib/actions";
 import { withAuth } from "@/lib/auth";
-import { listCurrentUserClients } from "@/lib/sdk";
+import { listCurrentUserAuthorizations, listCurrentUserClients } from "@/lib/sdk";
+import { getOIDCScopeDetail } from "@/lib/oidc";
 
 const formatDateTime = (value?: string | null) => {
   if (!value) {
@@ -49,6 +51,8 @@ export default async function AccountPage() {
   });
   const clientsResponse = await listCurrentUserClients(cookieHeader);
   const clients = clientsResponse?.clients ?? [];
+  const authorizationsResponse = await listCurrentUserAuthorizations(cookieHeader);
+  const authorizations = authorizationsResponse?.authorizations ?? [];
 
   return (
     <div className="min-h-screen">
@@ -197,6 +201,73 @@ export default async function AccountPage() {
                             revokeClientAction={revokeClientAction}
                             deleteClientAction={deleteClientAction}
                           />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Connected Apps</CardTitle>
+            <CardDescription>
+              Apps you have granted access to through your account.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="overflow-x-auto rounded-lg border border-border/60">
+              <Table className="min-w-[760px]">
+                <TableHeader>
+                  <TableRow className="bg-muted/30">
+                    <TableHead>App</TableHead>
+                    <TableHead>Client ID</TableHead>
+                    <TableHead>Access</TableHead>
+                    <TableHead>Last authorized</TableHead>
+                    <TableHead className="w-[120px] text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {authorizations.length === 0 ? (
+                    <TableRow>
+                      <TableCell className="py-8 text-center text-muted-foreground" colSpan={5}>
+                        No connected apps yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    authorizations.map((authorization) => (
+                      <TableRow key={authorization.client_id}>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium">{authorization.name}</div>
+                            <div className="max-w-[280px] truncate font-mono text-xs text-muted-foreground">
+                              {authorization.redirect_uri}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <CopyableCode value={authorization.client_id} />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-2">
+                            {authorization.granted_scopes.map((scope) => (
+                              <Badge key={scope} variant="secondary" title={getOIDCScopeDetail(scope).description}>
+                                {getOIDCScopeDetail(scope).title}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {formatDateTime(authorization.last_authorized_at)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <form action={revokeAuthorizationAction}>
+                            <input type="hidden" name="client_id" value={authorization.client_id} />
+                            <Button type="submit" variant="outline">Disconnect</Button>
+                          </form>
                         </TableCell>
                       </TableRow>
                     ))

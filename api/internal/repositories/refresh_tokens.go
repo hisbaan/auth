@@ -64,6 +64,30 @@ func (r *RefreshTokenRepository) RevokeByUserID(userID ulid.ULID) error {
 	return nil
 }
 
+func (r *RefreshTokenRepository) RevokeByAuthorizationID(authorizationID ulid.ULID) error {
+	_, err := RefreshTokens.UPDATE().
+		SET(RefreshTokens.RevokedAt.SET(TimestampzT(time.Now()))).
+		WHERE(AND(RefreshTokens.AuthorizationID.EQ(Bytea(authorizationID.Bytes())), RefreshTokens.RevokedAt.IS_NULL())).
+		Exec(r.db)
+	if err != nil {
+		log.Printf("[ERROR] Revoke tokens by authorizationID failed: %v", err)
+		return apperror.NewInternalServerError("Database query error")
+	}
+	return nil
+}
+
+func (r *RefreshTokenRepository) RevokeByClientID(clientID ulid.ULID) error {
+	_, err := RefreshTokens.UPDATE().
+		SET(RefreshTokens.RevokedAt.SET(TimestampzT(time.Now()))).
+		WHERE(AND(RefreshTokens.ClientID.EQ(Bytea(clientID.Bytes())), RefreshTokens.RevokedAt.IS_NULL())).
+		Exec(r.db)
+	if err != nil {
+		log.Printf("[ERROR] Revoke tokens by clientID failed: %v", err)
+		return apperror.NewInternalServerError("Database query error")
+	}
+	return nil
+}
+
 func (r *RefreshTokenRepository) Create(token model.RefreshTokens) error {
 	_, err := RefreshTokens.INSERT().MODEL(token).Exec(r.db)
 	if err != nil {

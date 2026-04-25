@@ -16,6 +16,7 @@ const (
 	ClientUpdated                EventType = "client.updated"
 	ClientRevoked                EventType = "client.revoked"
 	ClientDeleted                EventType = "client.deleted"
+	ClientAuthorizationRevoked   EventType = "client_authorization.revoked"
 
 	APIKeyCreated EventType = "api_key.created"
 	APIKeyRevoked EventType = "api_key.revoked"
@@ -90,6 +91,10 @@ type ClientRevokedData struct {
 }
 
 type ClientDeletedData struct {
+	ClientID string `json:"client_id"`
+}
+
+type ClientAuthorizationRevokedData struct {
 	ClientID string `json:"client_id"`
 }
 

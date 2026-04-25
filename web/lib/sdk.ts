@@ -3,6 +3,7 @@ import type {
 	Client,
 	AuthorizeClientInfo,
 	ListEventsResponse,
+	ListClientAuthorizationsResponse,
 	ListClientsResponse,
 	ListRefreshTokensResponse,
 	ListRolesResponse,
@@ -192,6 +193,19 @@ export async function listCurrentUserClients(
 	return result.data;
 }
 
+export async function listCurrentUserAuthorizations(
+	cookieHeader: string,
+): Promise<ListClientAuthorizationsResponse | null> {
+	const result = await sdkRequest<ListClientAuthorizationsResponse>("/users/me/authorizations", {
+		cookieHeader,
+	});
+	if (!result.ok || !result.data) {
+		return null;
+	}
+
+	return result.data;
+}
+
 type CreateCurrentUserClientParams = {
 	name: string;
 	redirectURI: string;
@@ -221,6 +235,13 @@ export async function createCurrentUserClient(
 
 export async function revokeCurrentUserClient(cookieHeader: string, clientId: string) {
 	return sdkRequest<void>(`/users/me/clients/${encodeURIComponent(clientId)}/revoke`, {
+		method: "POST",
+		cookieHeader,
+	});
+}
+
+export async function revokeCurrentUserAuthorization(cookieHeader: string, clientId: string) {
+	return sdkRequest<void>(`/users/me/authorizations/${encodeURIComponent(clientId)}/revoke`, {
 		method: "POST",
 		cookieHeader,
 	});

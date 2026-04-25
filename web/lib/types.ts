@@ -71,6 +71,18 @@ export type ListClientsResponse = {
   next_cursor?: string;
 };
 
+export type ClientAuthorization = {
+	client_id: string;
+	name: string;
+	redirect_uri: string;
+	granted_scopes: string[];
+	last_authorized_at: string;
+};
+
+export type ListClientAuthorizationsResponse = {
+	authorizations: ClientAuthorization[];
+};
+
 export type AuthorizeClientInfo = {
 	id: string;
 	name: string;

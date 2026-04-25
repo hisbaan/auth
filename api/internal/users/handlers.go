@@ -10,7 +10,9 @@ import (
 	"auth/internal/utils/tokenutil"
 	"auth/internal/utils/ulidutil"
 	"context"
+	"net"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/lib/pq"
@@ -222,6 +224,38 @@ func (s *UsersService) ListClients(userID ulid.ULID, params ListClientsParams) (
 	return ListClientsResponse{Clients: result, NextCursor: nextCursor}, nil
 }
 
+type ClientAuthorizationResponse struct {
+	ClientID         string    `json:"client_id"`
+	Name             string    `json:"name"`
+	RedirectURI      string    `json:"redirect_uri"`
+	GrantedScopes    []string  `json:"granted_scopes"`
+	LastAuthorizedAt time.Time `json:"last_authorized_at"`
+}
+
+type ListClientAuthorizationsResponse struct {
+	Authorizations []ClientAuthorizationResponse `json:"authorizations"`
+}
+
+func (s *UsersService) ListClientAuthorizations(userID ulid.ULID) (ListClientAuthorizationsResponse, error) {
+	authorizations, err := s.userClientAuthorizationRepo.ListActiveWithClientByUserID(userID)
+	if err != nil {
+		return ListClientAuthorizationsResponse{}, err
+	}
+
+	response := make([]ClientAuthorizationResponse, 0, len(authorizations))
+	for _, authorization := range authorizations {
+		response = append(response, ClientAuthorizationResponse{
+			ClientID:         ulidutil.ToPrefixed("client", ulidutil.MustFromBytes(authorization.ClientID)),
+			Name:             authorization.ClientName,
+			RedirectURI:      authorization.ClientRedirectURI,
+			GrantedScopes:    []string(authorization.GrantedScopes),
+			LastAuthorizedAt: authorization.LastAuthorizedAt,
+		})
+	}
+
+	return ListClientAuthorizationsResponse{Authorizations: response}, nil
+}
+
 type ClientParams struct {
 	Name          string   `json:"name"`
 	RedirectURI   string   `json:"redirect_uri"`
@@ -310,8 +344,38 @@ func (s *UsersService) RevokeClient(ctx context.Context, userID ulid.ULID, clien
 	if err := s.clientRepo.Revoke(clientID); err != nil {
 		return err
 	}
+	if err := s.userClientAuthorizationRepo.RevokeByClientID(clientID); err != nil {
+		return err
+	}
+	if err := s.refreshTokenRepo.RevokeByClientID(clientID); err != nil {
+		return err
+	}
 
 	events.Log(ctx, &s.eventRepo, events.ClientRevoked, &userID, events.ClientRevokedData{
+		ClientID: ulidutil.ToPrefixed("client", clientID),
+	})
+
+	return nil
+}
+
+func (s *UsersService) RevokeClientAuthorization(ctx context.Context, userID ulid.ULID, clientID ulid.ULID) error {
+	authorization, err := s.userClientAuthorizationRepo.GetByUserIDAndClientID(userID, clientID)
+	if err != nil {
+		return err
+	}
+	if authorization == nil || authorization.RevokedAt != nil {
+		return nil
+	}
+
+	authorizationID := ulidutil.MustFromBytes(authorization.ID)
+	if err := s.userClientAuthorizationRepo.Revoke(authorizationID); err != nil {
+		return err
+	}
+	if err := s.refreshTokenRepo.RevokeByAuthorizationID(authorizationID); err != nil {
+		return err
+	}
+
+	events.Log(ctx, &s.eventRepo, events.ClientAuthorizationRevoked, &userID, events.ClientAuthorizationRevokedData{
 		ClientID: ulidutil.ToPrefixed("client", clientID),
 	})
 
@@ -328,6 +392,12 @@ func (s *UsersService) DeleteClient(ctx context.Context, userID ulid.ULID, clien
 	}
 
 	if err := s.clientRepo.Delete(clientID); err != nil {
+		return err
+	}
+	if err := s.userClientAuthorizationRepo.RevokeByClientID(clientID); err != nil {
+		return err
+	}
+	if err := s.refreshTokenRepo.RevokeByClientID(clientID); err != nil {
 		return err
 	}
 
@@ -353,8 +423,8 @@ func validateClientParams(name string, redirectURI string, allowedScopes []strin
 	if err != nil {
 		return ClientParams{}, apperror.NewBadRequest("Redirect URI must be a valid URL")
 	}
-	if parsed.Scheme != "https" {
-		return ClientParams{}, apperror.NewBadRequest("Redirect URI must use https")
+	if !isAllowedPublicClientRedirectURI(parsed) {
+		return ClientParams{}, apperror.NewBadRequest("Redirect URI must use https, loopback http, or a custom app scheme")
 	}
 
 	normalizedScopes := make([]string, 0, len(allowedScopes)+1)
@@ -380,4 +450,32 @@ func validateClientParams(name string, redirectURI string, allowedScopes []strin
 		RedirectURI:   parsed.String(),
 		AllowedScopes: pq.StringArray(normalizedScopes),
 	}, nil
+}
+
+func isAllowedPublicClientRedirectURI(parsed *url.URL) bool {
+	if parsed == nil || parsed.Scheme == "" {
+		return false
+	}
+
+	switch parsed.Scheme {
+	case "https":
+		return parsed.Host != ""
+	case "http":
+		host := parsed.Hostname()
+		if host == "" {
+			return false
+		}
+		return isLoopbackHost(host)
+	default:
+		return parsed.Host != ""
+	}
+}
+
+func isLoopbackHost(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
