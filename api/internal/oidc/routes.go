@@ -105,7 +105,7 @@ func Router(s *OIDCService, jwtAccessKey ed25519.PublicKey, issuer string) http.
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(jwtAccessKey, issuer))
 
-		r.Get("/userinfo", func(w http.ResponseWriter, r *http.Request) {
+		userinfoHandler := func(w http.ResponseWriter, r *http.Request) {
 			claims := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
 
 			response, err := s.UserInfo(UserInfoParams{Claims: claims})
@@ -115,7 +115,10 @@ func Router(s *OIDCService, jwtAccessKey ed25519.PublicKey, issuer string) http.
 			}
 
 			httputil.JSONResponse(w, http.StatusOK, response)
-		})
+		}
+
+		r.Get("/userinfo", userinfoHandler)
+		r.Post("/userinfo", userinfoHandler)
 
 		r.Get("/authorize/client-info", func(w http.ResponseWriter, r *http.Request) {
 			response, err := s.GetAuthorizeClientInfo(r.URL.Query().Get("client_id"))
@@ -160,6 +163,7 @@ func Router(s *OIDCService, jwtAccessKey ed25519.PublicKey, issuer string) http.
 		case "authorization_code":
 			response, err := s.TokenAuthorizationCode(ctx, TokenAuthorizationCodeParams{
 				GrantType:    r.Form.Get("grant_type"),
+				ClientID:     r.Form.Get("client_id"),
 				Code:         r.Form.Get("code"),
 				RedirectURI:  r.Form.Get("redirect_uri"),
 				CodeVerifier: r.Form.Get("code_verifier"),
@@ -173,6 +177,7 @@ func Router(s *OIDCService, jwtAccessKey ed25519.PublicKey, issuer string) http.
 		case "refresh_token":
 			response, err := s.TokenRefreshToken(ctx, TokenRefreshTokenParams{
 				GrantType:    r.Form.Get("grant_type"),
+				ClientID:     r.Form.Get("client_id"),
 				RefreshToken: r.Form.Get("refresh_token"),
 			})
 			if err != nil {

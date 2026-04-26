@@ -49,6 +49,10 @@ func NewInvalidGrantTokenError(description string) TokenError {
 	return &tokenError{status: http.StatusBadRequest, code: "invalid_grant", description: description}
 }
 
+func NewInvalidClientTokenError(description string) TokenError {
+	return &tokenError{status: http.StatusUnauthorized, code: "invalid_client", description: description}
+}
+
 func NewUnsupportedGrantTypeTokenError(description string) TokenError {
 	return &tokenError{status: http.StatusBadRequest, code: "unsupported_grant_type", description: description}
 }

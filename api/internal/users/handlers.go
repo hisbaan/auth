@@ -467,7 +467,7 @@ func isAllowedPublicClientRedirectURI(parsed *url.URL) bool {
 		}
 		return isLoopbackHost(host)
 	default:
-		return parsed.Host != ""
+		return parsed.Host != "" || parsed.Opaque != "" || parsed.Path != ""
 	}
 }
 

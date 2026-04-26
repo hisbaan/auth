@@ -205,6 +205,7 @@ type TokenResponse struct {
 
 type TokenAuthorizationCodeParams struct {
 	GrantType    string `json:"grant_type"`
+	ClientID     string `json:"client_id"`
 	Code         string `json:"code"`
 	RedirectURI  string `json:"redirect_uri"`
 	CodeVerifier string `json:"code_verifier"`
@@ -213,6 +214,14 @@ type TokenAuthorizationCodeParams struct {
 func (s *OIDCService) TokenAuthorizationCode(ctx context.Context, params TokenAuthorizationCodeParams) (TokenResponse, error) {
 	if params.GrantType != "authorization_code" {
 		return TokenResponse{}, NewUnsupportedGrantTypeTokenError("Invalid grant type")
+	}
+	if strings.TrimSpace(params.ClientID) == "" {
+		return TokenResponse{}, NewInvalidRequestTokenError("Invalid client_id")
+	}
+
+	clientID, err := ulidutil.FromPrefixed("client", params.ClientID)
+	if err != nil {
+		return TokenResponse{}, NewInvalidRequestTokenError("Invalid client_id")
 	}
 
 	codeUrlDecode, err := tokenutil.URLDecode(params.Code)
@@ -238,13 +247,18 @@ func (s *OIDCService) TokenAuthorizationCode(ctx context.Context, params TokenAu
 	if authorizationCode.RedirectURI != params.RedirectURI {
 		return TokenResponse{}, NewInvalidGrantTokenError("Invalid redirect URI")
 	}
+	if ulidutil.MustFromBytes(authorizationCode.ClientID) != clientID {
+		return TokenResponse{}, NewInvalidClientTokenError("Invalid client")
+	}
 
 	if tokenutil.PKCES256Challenge(params.CodeVerifier) != authorizationCode.CodeChallenge {
 		return TokenResponse{}, NewInvalidGrantTokenError("Invalid challenge verifier")
 	}
 
 	userID := ulidutil.MustFromBytes(authorizationCode.UserID)
-	clientID := ulidutil.MustFromBytes(authorizationCode.ClientID)
+	if _, err := s.requireActiveClient(clientID); err != nil {
+		return TokenResponse{}, err
+	}
 	user, err := s.userRepo.GetByID(userID)
 	if err != nil {
 		return TokenResponse{}, err
@@ -277,12 +291,11 @@ func (s *OIDCService) TokenAuthorizationCode(ctx context.Context, params TokenAu
 		user:       user,
 		scopes:     authorizationCode.Scopes,
 		nonce:      authorizationCode.Nonce,
-		expiry:     time.Duration(15) * time.Minute, // TODO what should the expiry window be on ID tokens?
+		expiry:     time.Duration(15) * time.Minute,
 	})
 	if err != nil {
 		return TokenResponse{}, err
 	}
-
 	if err := s.authorizationCodeRepo.MarkUsed(ulidutil.MustFromBytes(authorizationCode.ID)); err != nil {
 		return TokenResponse{}, err
 	}
@@ -298,12 +311,21 @@ func (s *OIDCService) TokenAuthorizationCode(ctx context.Context, params TokenAu
 
 type TokenRefreshTokenParams struct {
 	GrantType    string `json:"grant_type"`
+	ClientID     string `json:"client_id"`
 	RefreshToken string `json:"refresh_token"`
 }
 
 func (s *OIDCService) TokenRefreshToken(ctx context.Context, params TokenRefreshTokenParams) (TokenResponse, error) {
 	if params.GrantType != "refresh_token" {
 		return TokenResponse{}, NewUnsupportedGrantTypeTokenError("Invalid grant type")
+	}
+	if strings.TrimSpace(params.ClientID) == "" {
+		return TokenResponse{}, NewInvalidRequestTokenError("Invalid client_id")
+	}
+
+	clientID, err := ulidutil.FromPrefixed("client", params.ClientID)
+	if err != nil {
+		return TokenResponse{}, NewInvalidRequestTokenError("Invalid client_id")
 	}
 
 	_, claims, err := jwtutil.ValidateToken(s.jwtSigningKey.Public().(ed25519.PublicKey), params.RefreshToken, &sessiontokens.RefreshClaims{})
@@ -315,6 +337,9 @@ func (s *OIDCService) TokenRefreshToken(ctx context.Context, params TokenRefresh
 	}
 	if claims.TokenSource != sessiontokens.TokenSourceClient {
 		return TokenResponse{}, NewInvalidGrantTokenError("Invalid token")
+	}
+	if claims.ClientID == nil || *claims.ClientID != params.ClientID {
+		return TokenResponse{}, NewInvalidClientTokenError("Invalid client")
 	}
 	if err := jwtutil.ValidateClaims(claims.RegisteredClaims, s.issuer); err != nil {
 		return TokenResponse{}, NewInvalidGrantTokenError("Invalid token")
@@ -334,6 +359,12 @@ func (s *OIDCService) TokenRefreshToken(ctx context.Context, params TokenRefresh
 	}
 	if refreshToken.TokenSource != sessiontokens.TokenSourceClient || refreshToken.ClientID == nil || refreshToken.AuthorizationID == nil {
 		return TokenResponse{}, NewInvalidGrantTokenError("Invalid token")
+	}
+	if ulidutil.MustFromBytes(*refreshToken.ClientID) != clientID {
+		return TokenResponse{}, NewInvalidClientTokenError("Invalid client")
+	}
+	if _, err := s.requireActiveClient(clientID); err != nil {
+		return TokenResponse{}, err
 	}
 
 	authorizationID := ulidutil.MustFromBytes(*refreshToken.AuthorizationID)
@@ -516,6 +547,13 @@ func (s *OIDCService) UserInfo(params UserInfoParams) (UserInfoResponse, error) 
 	if err != nil {
 		return UserInfoResponse{}, apperror.NewUnauthorized("Invalid token")
 	}
+	client, err := s.clientRepo.GetByID(clientID)
+	if err != nil {
+		return UserInfoResponse{}, err
+	}
+	if client == nil || client.RevokedAt != nil {
+		return UserInfoResponse{}, apperror.NewUnauthorized("Invalid token")
+	}
 
 	authorization, err := s.userClientAuthorizationRepo.GetByUserIDAndClientID(userID, clientID)
 	if err != nil {
@@ -545,4 +583,16 @@ func (s *OIDCService) UserInfo(params UserInfoParams) (UserInfoResponse, error) 
 	}
 
 	return response, nil
+}
+
+func (s *OIDCService) requireActiveClient(clientID ulid.ULID) (*model.Clients, error) {
+	client, err := s.clientRepo.GetByID(clientID)
+	if err != nil {
+		return nil, err
+	}
+	if client == nil || client.RevokedAt != nil {
+		return nil, NewInvalidClientTokenError("Invalid client")
+	}
+
+	return client, nil
 }
