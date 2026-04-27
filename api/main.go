@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/ed25519"
 	"crypto/x509"
 	"database/sql"
@@ -14,6 +15,7 @@ import (
 	"auth/internal/auth"
 	"auth/internal/emails"
 	internalMiddleware "auth/internal/middleware"
+	"auth/internal/migrations"
 	"auth/internal/oidc"
 	"auth/internal/roles"
 	"auth/internal/users"
@@ -82,6 +84,15 @@ func main() {
 		log.Fatalf("failed opening connection to postgres: %v", err)
 	}
 	defer db.Close()
+	if err := db.Ping(); err != nil {
+		log.Fatalf("failed connecting to postgres: %v", err)
+	}
+
+	log.Println("applying database migrations")
+	if err := migrations.Apply(context.Background(), db); err != nil {
+		log.Fatalf("failed applying database migrations: %v", err)
+	}
+	log.Println("database migrations applied")
 
 	// Parse Ed25519 private key from PEM content
 	signingKey, err := parseEd25519PrivateKey(cfg.JWTSigningKeyPEM)
