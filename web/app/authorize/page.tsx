@@ -1,10 +1,8 @@
 import Link from "next/link";
 
-import { SiteHeader } from "@/components/layout/site-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { authorizeConsentAction } from "@/lib/actions";
 import { withAuth } from "@/lib/auth";
 import { API_BASE_URL, DOCS_URL } from "@/lib/config";
 import { parseEncodedRequest, withEncodedRequest } from "@/lib/http";
@@ -56,10 +54,9 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 
 	if (!client || !redirectURI) {
 		return (
-			<div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(182,215,168,0.32),_transparent_28%),linear-gradient(180deg,_#fbf9f4,_#f3efe4)]">
-				<SiteHeader />
+			<div className="min-h-screen">
 				<main className="mx-auto flex w-full max-w-5xl justify-center px-4 py-10 sm:px-6">
-					<Card className="w-full max-w-xl border-stone-300/70 bg-white/85 shadow-lg backdrop-blur">
+					<Card className="w-full max-w-xl">
 						<CardHeader>
 							<CardTitle>Unable to continue</CardTitle>
 							<CardDescription>
@@ -78,19 +75,18 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 	}
 
 	return (
-		<div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(182,215,168,0.32),_transparent_28%),linear-gradient(180deg,_#fbf9f4,_#f3efe4)] text-stone-900">
-			<SiteHeader />
+		<div className="min-h-screen">
 			<main className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-10 sm:px-6 lg:grid-cols-[1.1fr_0.9fr]">
 				<section className="space-y-5">
 					<div className="space-y-3">
-						<Badge variant="secondary" className="bg-stone-900 text-stone-50">Consent required</Badge>
+						<Badge variant="secondary">Consent required</Badge>
 						<h1 className="font-[family-name:var(--font-space-grotesk)] text-4xl font-semibold tracking-tight">{client.name} wants to connect to your account</h1>
-						<p className="max-w-xl text-sm leading-6 text-stone-600">
+						<p className="max-w-xl text-sm leading-6 text-muted-foreground">
 							Review the information this app is requesting before you continue.
 						</p>
 					</div>
 
-					<Card className="border-stone-300/70 bg-white/80 shadow-lg backdrop-blur">
+					<Card>
 						<CardHeader>
 							<CardTitle>Requested access</CardTitle>
 							<CardDescription>
@@ -102,9 +98,9 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 								const details = getOIDCScopeDetail(requestedScope);
 
 								return (
-									<div key={requestedScope} className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
-										<div className="font-medium text-stone-900">{details.title}</div>
-										<p className="mt-1 text-sm text-stone-600">{details.description}</p>
+									<div key={requestedScope} className="rounded-xl border border-border bg-muted/40 px-4 py-3">
+										<div className="font-medium text-foreground">{details.title}</div>
+										<p className="mt-1 text-sm text-muted-foreground">{details.description}</p>
 									</div>
 								);
 							})}
@@ -113,7 +109,7 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 				</section>
 
 				<section>
-					<Card className="border-stone-300/70 bg-white/88 shadow-xl backdrop-blur">
+					<Card>
 						<CardHeader>
 							<CardTitle>Connection details</CardTitle>
 							<CardDescription>
@@ -122,26 +118,26 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 						</CardHeader>
 						<CardContent className="space-y-5">
 							<div className="space-y-1 text-sm">
-								<div className="text-stone-500">Application</div>
+								<div className="text-muted-foreground">Application</div>
 								<div className="font-medium">{client.name}</div>
 							</div>
 							<div className="space-y-1 text-sm">
-								<div className="text-stone-500">Client ID</div>
-								<div className="font-mono text-xs break-all text-stone-700">{client.id}</div>
+								<div className="text-muted-foreground">Client ID</div>
+								<div className="font-mono text-xs break-all text-muted-foreground">{client.id}</div>
 							</div>
 							<div className="space-y-1 text-sm">
-								<div className="text-stone-500">Redirect URI</div>
-								<div className="font-mono text-xs break-all text-stone-700">{redirectURI}</div>
+								<div className="text-muted-foreground">Redirect URI</div>
+								<div className="font-mono text-xs break-all text-muted-foreground">{redirectURI}</div>
 							</div>
 
-							<form action={authorizeConsentAction} className="space-y-3">
+							<form action="/authorize/complete" method="post" className="space-y-3">
 								<input type="hidden" name="request" value={request} />
 								<input type="hidden" name="client_id" value={client.id} />
 								<input type="hidden" name="scope" value={scope} />
-								<Button type="submit" className="w-full bg-stone-900 text-stone-50 hover:bg-stone-800">Allow access</Button>
+								<Button type="submit" className="w-full">Allow access</Button>
 							</form>
 
-							<Button type="button" variant="outline" asChild className="w-full border-stone-300 bg-transparent">
+							<Button type="button" variant="outline" asChild className="w-full">
 								<Link href={denyHref}>Deny</Link>
 							</Button>
 						</CardContent>
