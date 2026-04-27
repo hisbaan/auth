@@ -40,6 +40,7 @@ type Config struct {
 	ServiceName      string `env:"SERVICE_NAME,required"`
 	SupportEmail     string `env:"SUPPORT_EMAIL,required"`
 	CookieDomain     string `env:"COOKIE_DOMAIN,required"`
+	RunMigrations    bool   `env:"RUN_MIGRATIONS" envDefault:"true"`
 }
 
 func parseEd25519PrivateKey(pemContent string) (ed25519.PrivateKey, error) {
@@ -88,11 +89,15 @@ func main() {
 		log.Fatalf("failed connecting to postgres: %v", err)
 	}
 
-	log.Println("applying database migrations")
-	if err := migrations.Apply(context.Background(), db); err != nil {
-		log.Fatalf("failed applying database migrations: %v", err)
+	if cfg.RunMigrations {
+		log.Println("applying database migrations")
+		if err := migrations.Apply(context.Background(), db); err != nil {
+			log.Fatalf("failed applying database migrations: %v", err)
+		}
+		log.Println("database migrations applied")
+	} else {
+		log.Println("database migrations disabled")
 	}
-	log.Println("database migrations applied")
 
 	// Parse Ed25519 private key from PEM content
 	signingKey, err := parseEd25519PrivateKey(cfg.JWTSigningKeyPEM)
