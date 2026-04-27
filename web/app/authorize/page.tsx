@@ -8,6 +8,7 @@ import { API_BASE_URL, DOCS_URL } from "@/lib/config";
 import { parseEncodedRequest, withEncodedRequest } from "@/lib/http";
 import { getOIDCScopeDetail } from "@/lib/oidc";
 import { getAuthorizeClientInfo } from "@/lib/sdk";
+import { authorizeConsentAction } from "@/lib/actions";
 
 type AuthorizePageProps = {
 	searchParams: Promise<{ request?: string }>;
@@ -130,7 +131,7 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 								<div className="font-mono text-xs break-all text-muted-foreground">{redirectURI}</div>
 							</div>
 
-							<form action="/authorize/complete" method="post" className="space-y-3">
+							<form action={authorizeConsentAction} className="space-y-3">
 								<input type="hidden" name="request" value={request} />
 								<input type="hidden" name="client_id" value={client.id} />
 								<input type="hidden" name="scope" value={scope} />
