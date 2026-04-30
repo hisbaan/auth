@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"auth/internal/admin"
@@ -40,7 +41,24 @@ type Config struct {
 	ServiceName      string `env:"SERVICE_NAME,required"`
 	SupportEmail     string `env:"SUPPORT_EMAIL,required"`
 	CookieDomain     string `env:"COOKIE_DOMAIN,required"`
+	CORSOrigins      string `env:"CORS_ALLOWED_ORIGINS"`
 	RunMigrations    bool   `env:"RUN_MIGRATIONS" envDefault:"true"`
+}
+
+func corsAllowedOrigins(cfg Config) []string {
+	return splitCSV(cfg.CORSOrigins)
+}
+
+func splitCSV(value string) []string {
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			result = append(result, part)
+		}
+	}
+	return result
 }
 
 func parseEd25519PrivateKey(pemContent string) (ed25519.PrivateKey, error) {
@@ -119,7 +137,7 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
-	r.Use(internalMiddleware.CORS())
+	r.Use(internalMiddleware.CORS(corsAllowedOrigins(cfg)))
 
 	authService := auth.NewAuthService(db, signingKey, cfg.JWTSigningKeyID, cfg.IssuerUrl, emailService, cfg.CookieDomain)
 	r.Mount("/auth", auth.Router(authService))
