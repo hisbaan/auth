@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -152,8 +153,9 @@ func Router(s *OIDCService, jwtAccessKey ed25519.PublicKey, issuer string) http.
 		})
 	})
 
-	r.Post("/token", func(w http.ResponseWriter, r *http.Request) {
+	r.With(middleware.RateLimit(30, time.Minute)).Post("/token", func(w http.ResponseWriter, r *http.Request) {
 		ctx := httputil.WithClientInfo(r.Context(), httputil.ClientInfoFromRequest(r))
+		httputil.LimitBody(w, r)
 		if err := r.ParseForm(); err != nil {
 			HandleTokenError(w, NewInvalidRequestTokenError("Invalid request"))
 			return
@@ -191,8 +193,9 @@ func Router(s *OIDCService, jwtAccessKey ed25519.PublicKey, issuer string) http.
 		}
 	})
 
-	r.Post("/token/revoke", func(w http.ResponseWriter, r *http.Request) {
+	r.With(middleware.RateLimit(30, time.Minute)).Post("/token/revoke", func(w http.ResponseWriter, r *http.Request) {
 		ctx := httputil.WithClientInfo(r.Context(), httputil.ClientInfoFromRequest(r))
+		httputil.LimitBody(w, r)
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "Invalid request", http.StatusBadRequest)
 			return

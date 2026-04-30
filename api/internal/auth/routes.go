@@ -2,6 +2,7 @@ package auth
 
 import (
 	"auth/internal/apperror"
+	securitymiddleware "auth/internal/middleware"
 	"auth/internal/utils/httputil"
 	"net/http"
 	"strings"
@@ -84,7 +85,7 @@ func Router(s *AuthService) http.Handler {
 	//	@Failure		409
 	//	@Failure		500
 	//	@Router			/auth/register [post]
-	r.Post("/register", func(w http.ResponseWriter, r *http.Request) {
+	r.With(securitymiddleware.RateLimit(5, time.Minute)).Post("/register", func(w http.ResponseWriter, r *http.Request) {
 		var body CreateUserParams
 		if err := httputil.ParseBody(w, r, &body); err != nil {
 			return
@@ -108,7 +109,7 @@ func Router(s *AuthService) http.Handler {
 	//	@Failure		401
 	//	@Failure		500
 	//	@Router			/auth/login [post]
-	r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
+	r.With(securitymiddleware.RateLimit(10, time.Minute)).Post("/login", func(w http.ResponseWriter, r *http.Request) {
 		var body LoginParams
 		if err := httputil.ParseBody(w, r, &body); err != nil {
 			return
@@ -134,7 +135,7 @@ func Router(s *AuthService) http.Handler {
 	//	@Failure		400
 	//	@Failure		401
 	//	@Router			/auth/refresh [post]
-	r.Post("/refresh", func(w http.ResponseWriter, r *http.Request) {
+	r.With(securitymiddleware.RateLimit(30, time.Minute)).Post("/refresh", func(w http.ResponseWriter, r *http.Request) {
 		var body RefreshParams
 		if err := httputil.ParseBody(w, r, &body); err != nil {
 			return
@@ -196,7 +197,7 @@ func Router(s *AuthService) http.Handler {
 	//	@Failure		400
 	//	@Failure		500
 	//	@Router			/auth/forgot-password [post]
-	r.Post("/forgot-password", func(w http.ResponseWriter, r *http.Request) {
+	r.With(securitymiddleware.RateLimit(5, time.Minute)).Post("/forgot-password", func(w http.ResponseWriter, r *http.Request) {
 		var body ForgotPasswordParams
 		if err := httputil.ParseBody(w, r, &body); err != nil {
 			return
@@ -220,7 +221,7 @@ func Router(s *AuthService) http.Handler {
 	//	@Failure		400
 	//	@Failure		500
 	//	@Router			/auth/password-reset [post]
-	r.Post("/password-reset", func(w http.ResponseWriter, r *http.Request) {
+	r.With(securitymiddleware.RateLimit(10, time.Minute)).Post("/password-reset", func(w http.ResponseWriter, r *http.Request) {
 		var body PasswordResetParams
 		if err := httputil.ParseBody(w, r, &body); err != nil {
 			return
@@ -244,7 +245,7 @@ func Router(s *AuthService) http.Handler {
 	//	@Failure		400
 	//	@Failure		500
 	//	@Router			/auth/verify-email [post]
-	r.Post("/verify-email", func(w http.ResponseWriter, r *http.Request) {
+	r.With(securitymiddleware.RateLimit(20, time.Minute)).Post("/verify-email", func(w http.ResponseWriter, r *http.Request) {
 		var body VerifyEmailParams
 		if err := httputil.ParseBody(w, r, &body); err != nil {
 			return

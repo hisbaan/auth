@@ -4,10 +4,13 @@ import (
 	"auth/internal/apperror"
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"net/url"
 )
+
+const MaxRequestBodyBytes = 1 << 20
 
 type ClientInfo struct {
 	IP        string
@@ -17,12 +20,23 @@ type ClientInfo struct {
 type clientInfoKey struct{}
 
 func ParseBody(w http.ResponseWriter, r *http.Request, body any) error {
+	LimitBody(w, r)
+
 	err := json.NewDecoder(r.Body).Decode(body)
 	if err != nil {
+		var maxBytesError *http.MaxBytesError
+		if errors.As(err, &maxBytesError) {
+			http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)
+			return err
+		}
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return err
 	}
 	return nil
+}
+
+func LimitBody(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBodyBytes)
 }
 
 func HandleError(w http.ResponseWriter, err error) {
