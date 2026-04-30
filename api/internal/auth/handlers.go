@@ -239,8 +239,16 @@ func (s *AuthService) Refresh(ctx context.Context, params RefreshParams) (Refres
 	}
 
 	refreshTokenULID := ulidutil.MustFromBytes(refreshToken.ID)
-	if err := s.refreshTokenRepo.Revoke(refreshTokenULID); err != nil {
+	revoked, err := s.refreshTokenRepo.Revoke(refreshTokenULID)
+	if err != nil {
 		return RefreshResponse{}, err
+	}
+	if !revoked {
+		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, &refreshTokenUserID, events.AuthenticationRefreshFailedData{
+			RefreshTokenID: refreshTokenIDValue,
+			Reason:         events.EventReasonRevokedToken,
+		})
+		return RefreshResponse{}, apperror.NewUnauthorized("Invalid token")
 	}
 	events.Log(ctx, &s.eventRepo, events.RefreshTokenRevoked, &refreshTokenUserID, events.RefreshTokenRevokedData{
 		RefreshTokenID: refreshTokenIDValue,

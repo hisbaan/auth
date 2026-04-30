@@ -378,8 +378,12 @@ func (s *OIDCService) TokenRefreshToken(ctx context.Context, params TokenRefresh
 
 	refreshTokenUserID := ulidutil.MustFromBytes(refreshToken.UserID)
 	refreshTokenIDValue := ulidutil.ToPrefixed("token", tokenID)
-	if err := s.refreshTokenRepo.Revoke(tokenID); err != nil {
+	revoked, err := s.refreshTokenRepo.Revoke(tokenID)
+	if err != nil {
 		return TokenResponse{}, err
+	}
+	if !revoked {
+		return TokenResponse{}, NewInvalidGrantTokenError("Invalid token")
 	}
 	events.Log(ctx, &s.eventRepo, events.RefreshTokenRevoked, &refreshTokenUserID, events.RefreshTokenRevokedData{
 		RefreshTokenID: refreshTokenIDValue,
@@ -508,7 +512,7 @@ func (s *OIDCService) RevokeToken(ctx context.Context, params RevokeTokenParams)
 		return nil
 	}
 
-	if err := s.refreshTokenRepo.Revoke(tokenID); err != nil {
+	if _, err := s.refreshTokenRepo.Revoke(tokenID); err != nil {
 		return err
 	}
 

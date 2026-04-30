@@ -40,16 +40,23 @@ func (r *RefreshTokenRepository) GetByID(id ulid.ULID) (*model.RefreshTokens, er
 	return &tokens[0], nil
 }
 
-func (r *RefreshTokenRepository) Revoke(id ulid.ULID) error {
-	_, err := RefreshTokens.UPDATE().
+func (r *RefreshTokenRepository) Revoke(id ulid.ULID) (bool, error) {
+	result, err := RefreshTokens.UPDATE().
 		SET(RefreshTokens.RevokedAt.SET(TimestampzT(time.Now()))).
 		WHERE(AND(RefreshTokens.ID.EQ(Bytea(id.Bytes())), RefreshTokens.RevokedAt.IS_NULL())).
 		Exec(r.db)
 	if err != nil {
 		log.Printf("[ERROR] Revoke token failed: %v", err)
-		return apperror.NewInternalServerError("Database query error")
+		return false, apperror.NewInternalServerError("Database query error")
 	}
-	return nil
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("[ERROR] Revoke token rows affected failed: %v", err)
+		return false, apperror.NewInternalServerError("Database query error")
+	}
+
+	return rowsAffected > 0, nil
 }
 
 func (r *RefreshTokenRepository) RevokeByUserID(userID ulid.ULID) error {
