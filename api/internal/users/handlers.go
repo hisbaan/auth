@@ -12,6 +12,7 @@ import (
 	"context"
 	"net"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -311,12 +312,22 @@ func (s *UsersService) UpdateClient(ctx context.Context, userID ulid.ULID, clien
 		return err
 	}
 
+	securityPropertiesChanged := client.RedirectURI != normalized.RedirectURI || !slices.Equal([]string(client.AllowedScopes), []string(normalized.AllowedScopes))
+
 	client.Name = normalized.Name
 	client.RedirectURI = normalized.RedirectURI
 	client.AllowedScopes = normalized.AllowedScopes
 
 	if err := s.clientRepo.Update(*client); err != nil {
 		return err
+	}
+	if securityPropertiesChanged {
+		if err := s.userClientAuthorizationRepo.RevokeByClientID(clientID); err != nil {
+			return err
+		}
+		if err := s.refreshTokenRepo.RevokeByClientID(clientID); err != nil {
+			return err
+		}
 	}
 
 	events.Log(ctx, &s.eventRepo, events.ClientUpdated, &userID, events.ClientUpdatedData{
