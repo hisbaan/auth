@@ -286,6 +286,9 @@ func (s *AuthService) ForgotPassword(ctx context.Context, params ForgotPasswordP
 	if err != nil {
 		return err
 	}
+	if user == nil {
+		return nil
+	}
 	userID := ulidutil.MustFromBytes(user.ID)
 
 	s.passwordResetTokenRepo.RevokeByUserID(userID)
