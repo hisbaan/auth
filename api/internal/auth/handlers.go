@@ -6,6 +6,7 @@ import (
 	"auth/internal/jet/postgres/public/model"
 	sessiontokens "auth/internal/session_tokens"
 	"auth/internal/utils/jwtutil"
+	"auth/internal/utils/stringutil"
 	"auth/internal/utils/tokenutil"
 	"auth/internal/utils/ulidutil"
 	"context"
@@ -23,6 +24,21 @@ type CreateUserParams struct {
 }
 
 func (s *AuthService) CreateUser(ctx context.Context, params CreateUserParams) error {
+	username, err := stringutil.ValidateUsername(params.Username)
+	if err != nil {
+		return err
+	}
+	email, err := stringutil.NormalizeEmail(params.Email)
+	if err != nil {
+		return err
+	}
+	if email == s.emailService.SenderAddress() {
+		return apperror.NewBadRequest("Invalid email")
+	}
+	if err := stringutil.ValidatePassword(params.Password); err != nil {
+		return err
+	}
+
 	hash, err := HashPassword(params.Password)
 	if err != nil {
 		return err
@@ -30,8 +46,8 @@ func (s *AuthService) CreateUser(ctx context.Context, params CreateUserParams) e
 
 	user := model.Users{
 		ID:            ulid.Make().Bytes(),
-		Username:      params.Username,
-		Email:         params.Email,
+		Username:      username,
+		Email:         email,
 		EmailVerified: false,
 		PasswordHash:  hash,
 	}
@@ -64,11 +80,11 @@ func (s *AuthService) CreateUser(ctx context.Context, params CreateUserParams) e
 	}
 	s.emailVerificationTokenRepo.Create(emailVerificationTokenModel)
 	events.Log(ctx, &s.eventRepo, events.UserEmailVerificationCreated, &userID, events.UserEmailVerificationCreatedData{
-		Email: params.Email,
+		Email: email,
 	})
 	urlEncodedToken := tokenutil.URLEncode(token)
 
-	s.emailService.SendVerifyEmail(params.Email, params.Username, urlEncodedToken)
+	s.emailService.SendVerifyEmail(email, username, urlEncodedToken)
 
 	return nil
 }
@@ -87,14 +103,19 @@ type LoginResponse struct {
 }
 
 func (s *AuthService) Login(ctx context.Context, params LoginParams) (LoginResponse, error) {
-	user, err := s.userRepo.GetByEmail(params.Email)
+	email, err := stringutil.NormalizeEmail(params.Email)
+	if err != nil || params.Password == "" || len(params.Password) > stringutil.MaxPasswordLength {
+		return LoginResponse{}, apperror.NewUnauthorized("Invalid credentials")
+	}
+
+	user, err := s.userRepo.GetByEmail(email)
 	if err != nil {
 		return LoginResponse{}, err
 	}
 
 	if user == nil {
 		events.Log(ctx, &s.eventRepo, events.AuthenticationPasswordFailed, nil, events.AuthenticationPasswordFailedData{
-			Email: params.Email,
+			Email: email,
 		})
 		return LoginResponse{}, apperror.NewUnauthorized("Invalid credentials")
 	}
@@ -103,7 +124,7 @@ func (s *AuthService) Login(ctx context.Context, params LoginParams) (LoginRespo
 	if !match {
 		userID := ulidutil.MustFromBytes(user.ID)
 		events.Log(ctx, &s.eventRepo, events.AuthenticationPasswordFailed, &userID, events.AuthenticationPasswordFailedData{
-			Email: params.Email,
+			Email: email,
 		})
 		return LoginResponse{}, apperror.NewUnauthorized("Invalid credentials")
 	}
@@ -282,7 +303,15 @@ type ForgotPasswordParams struct {
 }
 
 func (s *AuthService) ForgotPassword(ctx context.Context, params ForgotPasswordParams) error {
-	user, err := s.userRepo.GetByEmail(params.Email)
+	email, err := stringutil.NormalizeEmail(params.Email)
+	if err != nil {
+		return nil
+	}
+	if email == s.emailService.SenderAddress() {
+		return nil
+	}
+
+	user, err := s.userRepo.GetByEmail(email)
 	if err != nil {
 		return err
 	}
@@ -308,7 +337,7 @@ func (s *AuthService) ForgotPassword(ctx context.Context, params ForgotPasswordP
 	})
 	urlEncodedToken := tokenutil.URLEncode(token)
 
-	s.emailService.SendForgotPasswordEmail(params.Email, user.Username, urlEncodedToken)
+	s.emailService.SendForgotPasswordEmail(email, user.Username, urlEncodedToken)
 
 	return nil
 }
@@ -319,6 +348,10 @@ type PasswordResetParams struct {
 }
 
 func (s *AuthService) PasswordReset(ctx context.Context, params PasswordResetParams) error {
+	if err := stringutil.ValidatePassword(params.NewPassword); err != nil {
+		return err
+	}
+
 	token, err := tokenutil.URLDecode(params.Token)
 	if err != nil {
 		events.Log(ctx, &s.eventRepo, events.PasswordResetFailed, nil, events.PasswordResetFailedData{

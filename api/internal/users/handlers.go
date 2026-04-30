@@ -58,10 +58,22 @@ type UpdateUserParams struct {
 }
 
 func (s *UsersService) UpdateUser(ctx context.Context, userID ulid.ULID, params UpdateUserParams) error {
+	username, err := stringutil.ValidateUsername(params.Username)
+	if err != nil {
+		return err
+	}
+	email, err := stringutil.NormalizeEmail(params.Email)
+	if err != nil {
+		return err
+	}
+	if email == s.emailService.SenderAddress() {
+		return apperror.NewBadRequest("Invalid email")
+	}
+
 	user := model.Users{
 		ID:       userID.Bytes(),
-		Email:    params.Email,
-		Username: params.Username,
+		Email:    email,
+		Username: username,
 	}
 
 	willConflict, err := s.userRepo.WillConflict(user)
@@ -76,7 +88,7 @@ func (s *UsersService) UpdateUser(ctx context.Context, userID ulid.ULID, params 
 	if err != nil {
 		return err
 	}
-	if existing.Email != params.Email {
+	if existing.Email != email {
 		user.EmailVerified = false
 
 		userID := ulidutil.MustFromBytes(user.ID)
@@ -96,11 +108,11 @@ func (s *UsersService) UpdateUser(ctx context.Context, userID ulid.ULID, params 
 		}
 		s.emailVerificationTokenRepo.Create(emailVerificationTokenModel)
 		events.Log(ctx, &s.eventRepo, events.UserEmailVerificationCreated, &userID, events.UserEmailVerificationCreatedData{
-			Email: params.Email,
+			Email: email,
 		})
 		urlEncodedToken := tokenutil.URLEncode(token)
 
-		s.emailService.SendVerifyEmail(params.Email, params.Username, urlEncodedToken)
+		s.emailService.SendVerifyEmail(email, username, urlEncodedToken)
 	}
 
 	if err := s.userRepo.Update(user); err != nil {
@@ -119,6 +131,13 @@ type UpdatePasswordParams struct {
 }
 
 func (s *UsersService) UpdatePassword(ctx context.Context, userID ulid.ULID, params UpdatePasswordParams) error {
+	if params.CurrentPassword == "" || len(params.CurrentPassword) > stringutil.MaxPasswordLength {
+		return apperror.NewUnauthorized("Unauthorized")
+	}
+	if err := stringutil.ValidatePassword(params.NewPassword); err != nil {
+		return err
+	}
+
 	user, err := s.userRepo.GetByID(userID)
 	if err != nil {
 		return err

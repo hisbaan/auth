@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"html/template"
 	"log"
+	"net/mail"
 	"strings"
 
 	"github.com/resend/resend-go/v3"
@@ -31,6 +32,15 @@ func NewEmailService(resendAPIKey string, from string, frontendURL string, servi
 		serviceName:  serviceName,
 		supportEmail: supportEmail,
 	}, nil
+}
+
+func (s *EmailService) SenderAddress() string {
+	address, err := mail.ParseAddress(s.from)
+	if err != nil {
+		return strings.ToLower(strings.TrimSpace(s.from))
+	}
+
+	return strings.ToLower(strings.TrimSpace(address.Address))
 }
 
 func (s *EmailService) SendEmail(to []string, html string, subject string) {
