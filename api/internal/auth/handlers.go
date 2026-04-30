@@ -368,6 +368,9 @@ func (s *AuthService) PasswordReset(ctx context.Context, params PasswordResetPar
 	if err := s.userRepo.SetPassword(userID, hashedPassword); err != nil {
 		return err
 	}
+	if err := s.refreshTokenRepo.RevokeByUserID(userID); err != nil {
+		return err
+	}
 	events.Log(ctx, &s.eventRepo, events.PasswordResetSucceeded, &userID, events.PasswordResetSucceededData{
 		PasswordResetTokenID: passwordResetTokenIDValue,
 	})
