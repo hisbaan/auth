@@ -61,6 +61,15 @@ func (s *OIDCService) Authorize(params AuthorizeParams, userID ulid.ULID) (Autho
 	if err != nil || authorizeRequest == nil {
 		return result, err
 	}
+	user, err := s.userRepo.GetByID(userID)
+	if err != nil {
+		return AuthorizeResult{}, err
+	}
+	if !user.EmailVerified {
+		result.Query.Set("error", "access_denied")
+		result.Query.Set("error_description", "Email verification required")
+		return result, nil
+	}
 
 	clientID := ulidutil.MustFromBytes(authorizeRequest.client.ID)
 	authorization, err := s.userClientAuthorizationRepo.GetByUserIDAndClientID(userID, clientID)
@@ -263,6 +272,9 @@ func (s *OIDCService) TokenAuthorizationCode(ctx context.Context, params TokenAu
 	if err != nil {
 		return TokenResponse{}, err
 	}
+	if !user.EmailVerified {
+		return TokenResponse{}, NewInvalidGrantTokenError("Invalid authorization")
+	}
 	userClientAuthorization, err := s.userClientAuthorizationRepo.GetByUserIDAndClientID(userID, clientID)
 	if err != nil {
 		return TokenResponse{}, err
@@ -377,6 +389,14 @@ func (s *OIDCService) TokenRefreshToken(ctx context.Context, params TokenRefresh
 	}
 
 	refreshTokenUserID := ulidutil.MustFromBytes(refreshToken.UserID)
+	user, err := s.userRepo.GetByID(refreshTokenUserID)
+	if err != nil {
+		return TokenResponse{}, err
+	}
+	if !user.EmailVerified {
+		return TokenResponse{}, NewInvalidGrantTokenError("Invalid token")
+	}
+
 	refreshTokenIDValue := ulidutil.ToPrefixed("token", tokenID)
 	revoked, err := s.refreshTokenRepo.Revoke(tokenID)
 	if err != nil {
@@ -419,6 +439,14 @@ type AuthorizeConsentParams struct {
 }
 
 func (s *OIDCService) GrantConsent(userID ulid.ULID, params AuthorizeConsentParams) error {
+	user, err := s.userRepo.GetByID(userID)
+	if err != nil {
+		return err
+	}
+	if !user.EmailVerified {
+		return apperror.NewForbidden("Email verification required")
+	}
+
 	clientID, err := ulidutil.FromPrefixed("client", params.ClientID)
 	if err != nil {
 		return err
