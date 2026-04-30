@@ -28,7 +28,6 @@ import {
 	updateCurrentUserClient,
 	updateCurrentPassword,
 	updateCurrentUser,
-	verifyEmail,
 } from "@/lib/sdk";
 import { mapAdminUserEvents } from "@/lib/event-utils";
 import { mapAdminUserSessions } from "@/lib/session-utils";
@@ -138,23 +137,6 @@ export async function resetPasswordAction(formData: FormData) {
 
   await setFlash("success", "Password reset complete. You can sign in now.");
   redirect("/login");
-}
-
-export async function verifyEmailAction(formData: FormData) {
-  const token = String(formData.get("token") ?? "").trim();
-  if (!token) {
-    await setFlash("error", "Token is required");
-    redirect("/verify-email");
-  }
-
-  const result = await verifyEmail(token);
-  if (!result.ok) {
-    await setFlash("error", "Unable to verify email");
-    redirect(`/verify-email?token=${encodeURIComponent(token)}`);
-  }
-
-  await setFlash("success", "Email verified. You can now sign in.");
-  redirect("/verify-email");
 }
 
 export async function logoutAction() {

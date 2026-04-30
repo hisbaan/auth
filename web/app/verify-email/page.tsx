@@ -6,9 +6,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { verifyEmailAction } from "@/lib/actions";
+import { verifyEmail } from "@/lib/sdk";
+import Link from "next/link";
 
 type VerifyEmailProps = {
   searchParams: Promise<{ token?: string }>;
@@ -18,32 +17,35 @@ export default async function VerifyEmailPage({
   searchParams,
 }: VerifyEmailProps) {
   const params = await searchParams;
+  const token = params.token?.trim() ?? "";
+  const result = token ? await verifyEmail(token) : null;
+  const isVerified = result?.ok ?? false;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl justify-center px-4 py-10 sm:px-6">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Verify email</CardTitle>
+          <CardTitle>{isVerified ? "Email verified" : "Verify email"}</CardTitle>
           <CardDescription>
-            Submit your verification token to confirm ownership.
+            {isVerified
+              ? "Your email address has been verified."
+              : "We could not verify your email address from this link."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <form action={verifyEmailAction} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="token">Verification token</Label>
-              <Input
-                id="token"
-                name="token"
-                defaultValue={params.token ?? ""}
-                required
-              />
-            </div>
+          <p className="text-sm text-muted-foreground">
+            {isVerified
+              ? "You can now sign in and continue using your account."
+              : token
+                ? "This verification link is invalid, expired, or has already been used."
+                : "This verification link is missing a token. Please use the link from your email."}
+          </p>
 
-            <Button className="w-full" type="submit">
-              Verify email
-            </Button>
-          </form>
+          <Button className="w-full" asChild>
+            <Link href={isVerified ? "/login" : "/"}>
+              {isVerified ? "Sign in" : "Back home"}
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     </main>
