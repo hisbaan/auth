@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { buildAuthorizeSuccessUrl, isAllowedCallbackUrl } from "@/lib/callback";
@@ -63,9 +63,7 @@ export async function loginAction(formData: FormData) {
     redirect(`/login?next=${encodeURIComponent(next)}&callback_url=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(state)}`);
   }
 
-  const requestHeaders = await headers();
-  const userAgent = requestHeaders.get("user-agent") ?? undefined;
-  const result = await loginWithPassword(email, password, userAgent);
+  const result = await loginWithPassword(email, password);
   if (!result.ok || !result.data) {
     await setFlash("error", "Invalid credentials");
     redirect(`/login?next=${encodeURIComponent(next)}&callback_url=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(state)}`);

@@ -1,3 +1,5 @@
+import { headers as nextHeaders } from "next/headers";
+
 import { API_BASE_URL } from "@/lib/config";
 import type {
 	Client,
@@ -19,6 +21,26 @@ type SDKRequestOptions = {
   headers?: Record<string, string>;
 };
 
+async function forwardedClientHeaders() {
+  const incoming = await nextHeaders();
+  const headers: Record<string, string> = {};
+  const forwardedFor = incoming.get("x-forwarded-for");
+  const realIp = incoming.get("x-real-ip");
+  const userAgent = incoming.get("user-agent");
+
+  if (forwardedFor) {
+    headers["X-Forwarded-For"] = forwardedFor;
+  }
+  if (realIp) {
+    headers["X-Real-IP"] = realIp;
+  }
+  if (userAgent) {
+    headers["User-Agent"] = userAgent;
+  }
+
+  return headers;
+}
+
 export type SDKResult<T> = {
   ok: boolean;
   status: number;
@@ -30,6 +52,10 @@ export type SDKResult<T> = {
 export async function sdkRequest<T>(path: string, options: SDKRequestOptions = {}): Promise<SDKResult<T>> {
   const headers = new Headers();
   headers.set("Accept", "application/json");
+
+  for (const [key, value] of Object.entries(await forwardedClientHeaders())) {
+    headers.set(key, value);
+  }
 
   if (options.body !== undefined) {
     headers.set("Content-Type", "application/json");
@@ -76,11 +102,10 @@ export async function sdkRequest<T>(path: string, options: SDKRequestOptions = {
   };
 }
 
-export async function loginWithPassword(email: string, password: string, userAgent?: string) {
+export async function loginWithPassword(email: string, password: string) {
   return sdkRequest<LoginResponse>("/auth/login", {
     method: "POST",
     body: { email, password },
-    headers: userAgent ? { "User-Agent": userAgent } : undefined,
   });
 }
 
