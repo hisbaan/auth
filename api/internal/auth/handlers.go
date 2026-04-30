@@ -183,6 +183,12 @@ func (s *AuthService) Refresh(ctx context.Context, params RefreshParams) (Refres
 		})
 		return RefreshResponse{}, apperror.NewUnauthorized("Invalid token")
 	}
+	if claims.TokenSource != sessiontokens.TokenSourceSelf {
+		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, userID, events.AuthenticationRefreshFailedData{
+			Reason: events.EventReasonInvalidToken,
+		})
+		return RefreshResponse{}, apperror.NewUnauthorized("Invalid token")
+	}
 	if err := jwtutil.ValidateClaims(claims.RegisteredClaims, s.issuer); err != nil {
 		reason := events.EventReasonInvalidToken
 		if claims.ExpiresAt != nil && claims.ExpiresAt.Before(time.Now()) {
@@ -221,6 +227,13 @@ func (s *AuthService) Refresh(ctx context.Context, params RefreshParams) (Refres
 		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, &refreshTokenUserID, events.AuthenticationRefreshFailedData{
 			RefreshTokenID: refreshTokenIDValue,
 			Reason:         events.EventReasonRevokedToken,
+		})
+		return RefreshResponse{}, apperror.NewUnauthorized("Invalid token")
+	}
+	if refreshToken.TokenSource != sessiontokens.TokenSourceSelf {
+		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, &refreshTokenUserID, events.AuthenticationRefreshFailedData{
+			RefreshTokenID: refreshTokenIDValue,
+			Reason:         events.EventReasonInvalidToken,
 		})
 		return RefreshResponse{}, apperror.NewUnauthorized("Invalid token")
 	}

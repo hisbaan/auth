@@ -39,9 +39,13 @@ func (s *SessionTokenService) IssueSessionTokens(ctx context.Context, params Iss
 		return SessionTokens{}, apperror.NewBadRequest("Self tokens cannot include client authorization")
 	}
 
-	roles, err := s.roleRepo.GetByUserID(params.UserID)
-	if err != nil {
-		return SessionTokens{}, err
+	var roleNames []string
+	if params.TokenSource == TokenSourceSelf {
+		roles, err := s.roleRepo.GetByUserID(params.UserID)
+		if err != nil {
+			return SessionTokens{}, err
+		}
+		roleNames = utils.Map(roles, func(role model.Roles) string { return role.Name })
 	}
 
 	accessToken, err := GenerateAccessToken(GenerateAccessTokenParams{
@@ -51,7 +55,7 @@ func (s *SessionTokenService) IssueSessionTokens(ctx context.Context, params Iss
 		userID:      params.UserID,
 		clientID:    params.ClientID,
 		tokenSource: params.TokenSource,
-		roles:       utils.Map(roles, func(role model.Roles) string { return role.Name }),
+		roles:       roleNames,
 		expiry:      s.accessTokenExpiry,
 	})
 	if err != nil {

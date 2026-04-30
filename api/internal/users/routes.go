@@ -15,6 +15,7 @@ import (
 func Router(s *UsersService) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Auth(s.jwtSigningKey.Public().(ed25519.PublicKey), s.issuer))
+	r.Use(middleware.RequireTokenSource(sessiontokens.TokenSourceSelf))
 
 	//	@Summary		Get current user
 	//	@Description	Returns the authenticated user's profile

@@ -9,6 +9,7 @@ import (
 	adminroles "auth/internal/admin/roles"
 	adminusers "auth/internal/admin/users"
 	"auth/internal/middleware"
+	sessiontokens "auth/internal/session_tokens"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -16,6 +17,7 @@ import (
 func Router(s *AdminService, jwtAccessKey ed25519.PublicKey, issuer string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Auth(jwtAccessKey, issuer))
+	r.Use(middleware.RequireTokenSource(sessiontokens.TokenSourceSelf))
 	r.Use(middleware.RequireAdmin(issuer))
 
 	r.Mount("/users", adminusers.Router(s.Users))
