@@ -42,7 +42,7 @@ export default async function VerifyEmailPage({
           </p>
 
           <Button className="w-full" asChild>
-            <Link href={isVerified ? "/login" : "/"}>
+            <Link className="text-black!" href={isVerified ? "/login" : "/"}>
               {isVerified ? "Sign in" : "Back home"}
             </Link>
           </Button>

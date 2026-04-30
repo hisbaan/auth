@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { SiteHeader } from "@/components/layout/site-header";
 import { FlashToaster } from "@/components/ui/flash-toaster";
@@ -34,7 +35,9 @@ export default function RootLayout({
           <SiteHeader />
           {children}
           <Toaster />
-          <FlashToaster />
+          <Suspense fallback={null}>
+            <FlashToaster />
+          </Suspense>
         </TooltipProvider>
       </body>
     </html>
