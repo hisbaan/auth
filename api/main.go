@@ -102,6 +102,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed opening connection to postgres: %v", err)
 	}
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(time.Duration(5) * time.Minute)
 	defer db.Close()
 	if err := db.Ping(); err != nil {
 		log.Fatalf("failed connecting to postgres: %v", err)
