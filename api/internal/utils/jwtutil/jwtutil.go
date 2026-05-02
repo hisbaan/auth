@@ -26,10 +26,7 @@ func ValidateClaims(claims jwt.RegisteredClaims, issuer string) error {
 	if claims.Issuer != issuer {
 		return apperror.NewUnauthorized("Invalid token")
 	}
-	if claims.ExpiresAt.Before(time.Now()) {
-		return apperror.NewUnauthorized("Invalid token")
-	}
-	if claims.ExpiresAt.Before(time.Now()) {
+	if claims.NotBefore != nil && claims.ExpiresAt.Before(time.Now()) {
 		return apperror.NewUnauthorized("Invalid token")
 	}
 
