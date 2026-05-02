@@ -112,7 +112,7 @@ func (s *UsersService) UpdateUser(ctx context.Context, userID ulid.ULID, params 
 		})
 		urlEncodedToken := tokenutil.URLEncode(token)
 
-		s.emailService.SendVerifyEmail(email, username, urlEncodedToken)
+		go s.emailService.SendVerifyEmail(email, username, urlEncodedToken)
 	}
 
 	if err := s.userRepo.Update(user); err != nil {

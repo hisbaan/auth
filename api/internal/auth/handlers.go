@@ -84,7 +84,7 @@ func (s *AuthService) CreateUser(ctx context.Context, params CreateUserParams) e
 	})
 	urlEncodedToken := tokenutil.URLEncode(token)
 
-	s.emailService.SendVerifyEmail(email, username, urlEncodedToken)
+	go s.emailService.SendVerifyEmail(email, username, urlEncodedToken)
 
 	return nil
 }
@@ -155,7 +155,7 @@ func (s *AuthService) Logout(ctx context.Context, token string) {
 		return
 	}
 
-	_, claims, err := jwtutil.ValidateToken[*sessiontokens.AccessClaims](s.jwtSigningKey.Public().(ed25519.PublicKey), token, &sessiontokens.AccessClaims{})
+	_, claims, err := jwtutil.ValidateToken(s.jwtSigningKey.Public().(ed25519.PublicKey), token, &sessiontokens.AccessClaims{})
 	if err != nil {
 		return
 	}
@@ -185,7 +185,7 @@ type RefreshResponse struct {
 }
 
 func (s *AuthService) Refresh(ctx context.Context, params RefreshParams) (RefreshResponse, error) {
-	_, claims, err := jwtutil.ValidateToken[*sessiontokens.RefreshClaims](s.jwtSigningKey.Public().(ed25519.PublicKey), params.RefreshToken, &sessiontokens.RefreshClaims{})
+	_, claims, err := jwtutil.ValidateToken(s.jwtSigningKey.Public().(ed25519.PublicKey), params.RefreshToken, &sessiontokens.RefreshClaims{})
 	if err != nil {
 		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, nil, events.AuthenticationRefreshFailedData{
 			Reason: events.EventReasonInvalidToken,
@@ -337,7 +337,7 @@ func (s *AuthService) ForgotPassword(ctx context.Context, params ForgotPasswordP
 	})
 	urlEncodedToken := tokenutil.URLEncode(token)
 
-	s.emailService.SendForgotPasswordEmail(email, user.Username, urlEncodedToken)
+	go s.emailService.SendForgotPasswordEmail(email, user.Username, urlEncodedToken)
 
 	return nil
 }
