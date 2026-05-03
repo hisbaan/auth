@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PasswordStrengthField } from "@/components/auth/password-strength-field";
 import { SocialButtons } from "@/components/auth/social-buttons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,20 +28,14 @@ export default async function RegisterPage() {
               <Input id="email" name="email" type="email" required autoComplete="email" />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" required minLength={8} autoComplete="new-password" />
-            </div>
+            <PasswordStrengthField id="password" name="password" label="Password" autoComplete="new-password" />
 
             <Button className="w-full" type="submit">
               Create account
             </Button>
           </form>
 
-          <div className="space-y-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">OIDC providers</p>
-            <SocialButtons />
-          </div>
+          <SocialButtons />
 
           <p className="text-sm text-muted-foreground">
             Already registered?{" "}

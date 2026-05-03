@@ -1,7 +1,6 @@
+import { PasswordStrengthField } from "@/components/auth/password-strength-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { resetPasswordAction } from "@/lib/actions";
 
 type ResetPasswordProps = {
@@ -20,12 +19,9 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
         </CardHeader>
         <CardContent className="space-y-4">
           <form action={resetPasswordAction} className="space-y-4">
-              <Input id="token" name="token" defaultValue={params.token ?? ""} required hidden />
+            <input id="token" name="token" defaultValue={params.token ?? ""} required hidden />
 
-            <div className="space-y-2">
-              <Label htmlFor="new_password">New password</Label>
-              <Input id="new_password" name="new_password" type="password" required minLength={8} />
-            </div>
+            <PasswordStrengthField id="new_password" name="new_password" label="New password" autoComplete="new-password" />
 
             <Button className="w-full" type="submit">
               Reset password

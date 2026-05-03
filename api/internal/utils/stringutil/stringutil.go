@@ -4,12 +4,14 @@ import (
 	"auth/internal/apperror"
 	"net/mail"
 	"strings"
+	"unicode"
 )
 
 const (
 	MaxEmailLength    = 254
 	MaxUsernameLength = 64
 	MaxPasswordLength = 1024
+	MinPasswordLength = 8
 )
 
 func NonEmpty(input string) (string, error) {
@@ -44,9 +46,31 @@ func ValidateUsername(input string) (string, error) {
 }
 
 func ValidatePassword(input string) error {
-	if input == "" || len(input) > MaxPasswordLength {
+	if input == "" || len(input) > MaxPasswordLength || len(input) < MinPasswordLength || !isStrongPassword(input) {
 		return apperror.NewBadRequest("Invalid password")
 	}
 
 	return nil
+}
+
+func isStrongPassword(input string) bool {
+	hasUpper := false
+	hasLower := false
+	hasNumber := false
+	hasSpecial := false
+
+	for _, char := range input {
+		switch {
+		case unicode.IsUpper(char):
+			hasUpper = true
+		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsDigit(char):
+			hasNumber = true
+		case unicode.IsPunct(char) || unicode.IsSymbol(char):
+			hasSpecial = true
+		}
+	}
+
+	return hasUpper && hasLower && hasNumber && hasSpecial
 }

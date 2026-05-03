@@ -1,6 +1,7 @@
 import { ClientActions } from "@/components/account/client-actions";
 import { CreateClientDialog } from "@/components/account/create-client-dialog";
 import { DeleteAccountDialog } from "@/components/account/delete-account-dialog";
+import { PasswordStrengthField } from "@/components/auth/password-strength-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -104,7 +105,6 @@ export default async function AccountPage() {
             <CardTitle>Security</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* TODO some live form validation. tanstack form? */}
             <form action={updatePasswordAction} className="space-y-4">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="current_password">Current password</Label>
@@ -115,16 +115,12 @@ export default async function AccountPage() {
                   required
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="new_password">New password</Label>
-                <Input
-                  id="new_password"
-                  name="new_password"
-                  type="password"
-                  required
-                  minLength={8}
-                />
-              </div>
+              <PasswordStrengthField
+                id="new_password"
+                name="new_password"
+                label="New password"
+                autoComplete="new-password"
+              />
               <div className="flex flex-col gap-2">
                 <Label htmlFor="new_password">Confirm New password</Label>
                 <Input
