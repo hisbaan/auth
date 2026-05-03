@@ -125,6 +125,9 @@ func (s *AuthService) Login(ctx context.Context, params LoginParams) (LoginRespo
 		})
 		return LoginResponse{}, apperror.NewUnauthorized("Invalid credentials")
 	}
+	if !user.EmailVerified {
+		return LoginResponse{}, apperror.NewForbidden("Email verification required")
+	}
 
 	userID := ulidutil.MustFromBytes(user.ID)
 	events.Log(ctx, &s.eventRepo, events.AuthenticationPasswordSucceeded, &userID, events.AuthenticationPasswordSucceededData{})
