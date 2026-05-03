@@ -81,6 +81,10 @@ func Router(s *OIDCService, jwtAccessKey ed25519.PublicKey, issuer string) http.
 			http.Redirect(w, r, redirectURL, http.StatusFound)
 			return
 		}
+		if claims.TokenSource != sessiontokens.TokenSourceSelf {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
 
 		userID, err := ulidutil.FromPrefixed("user", claims.Subject)
 		if err != nil {
@@ -133,6 +137,10 @@ func Router(s *OIDCService, jwtAccessKey ed25519.PublicKey, issuer string) http.
 
 		r.Post("/authorize/consent", func(w http.ResponseWriter, r *http.Request) {
 			claims := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+			if claims.TokenSource != sessiontokens.TokenSourceSelf {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
 			userID, err := ulidutil.FromPrefixed("user", claims.Subject)
 			if err != nil {
 				http.Error(w, "Invalid token", http.StatusUnauthorized)
