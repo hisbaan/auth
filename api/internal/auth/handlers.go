@@ -28,12 +28,9 @@ func (s *AuthService) CreateUser(ctx context.Context, params CreateUserParams) e
 	if err != nil {
 		return err
 	}
-	email, err := stringutil.NormalizeEmail(params.Email)
+	email, err := stringutil.ValidateUserEmail(params.Email, s.emailService.SenderAddress(), s.blockedEmailDomains)
 	if err != nil {
 		return err
-	}
-	if email == s.emailService.SenderAddress() {
-		return apperror.NewBadRequest("Invalid email")
 	}
 	if err := stringutil.ValidatePassword(params.Password); err != nil {
 		return err
@@ -303,12 +300,9 @@ type ForgotPasswordParams struct {
 }
 
 func (s *AuthService) ForgotPassword(ctx context.Context, params ForgotPasswordParams) error {
-	email, err := stringutil.NormalizeEmail(params.Email)
+	email, err := stringutil.ValidateUserEmail(params.Email, s.emailService.SenderAddress(), s.blockedEmailDomains)
 	if err != nil {
-		return nil
-	}
-	if email == s.emailService.SenderAddress() {
-		return nil
+		return err
 	}
 
 	user, err := s.userRepo.GetByEmail(email)

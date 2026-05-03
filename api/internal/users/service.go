@@ -8,10 +8,11 @@ import (
 )
 
 type UsersService struct {
-	db            *sql.DB
-	jwtSigningKey ed25519.PrivateKey
-	issuer        string
-	emailService  *emails.EmailService
+	db                  *sql.DB
+	jwtSigningKey       ed25519.PrivateKey
+	issuer              string
+	emailService        *emails.EmailService
+	blockedEmailDomains []string
 
 	userRepo                    repositories.UserRepository
 	clientRepo                  repositories.ClientRepository
@@ -22,12 +23,13 @@ type UsersService struct {
 	eventRepo                   repositories.EventRepository
 }
 
-func NewUsersService(db *sql.DB, jwtSigningKey ed25519.PrivateKey, issuer string, emailService *emails.EmailService) *UsersService {
+func NewUsersService(db *sql.DB, jwtSigningKey ed25519.PrivateKey, issuer string, emailService *emails.EmailService, blockedEmailDomains []string) *UsersService {
 	return &UsersService{
 		db:                          db,
 		jwtSigningKey:               jwtSigningKey,
 		issuer:                      issuer,
 		emailService:                emailService,
+		blockedEmailDomains:         blockedEmailDomains,
 		userRepo:                    repositories.NewUserRepository(db),
 		clientRepo:                  repositories.NewClientRepository(db),
 		userClientAuthorizationRepo: repositories.NewUserClientAuthorizationRepository(db),

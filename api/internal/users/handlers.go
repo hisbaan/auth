@@ -62,12 +62,9 @@ func (s *UsersService) UpdateUser(ctx context.Context, userID ulid.ULID, params 
 	if err != nil {
 		return err
 	}
-	email, err := stringutil.NormalizeEmail(params.Email)
+	email, err := stringutil.ValidateUserEmail(params.Email, s.emailService.SenderAddress(), s.blockedEmailDomains)
 	if err != nil {
 		return err
-	}
-	if email == s.emailService.SenderAddress() {
-		return apperror.NewBadRequest("Invalid email")
 	}
 
 	user := model.Users{

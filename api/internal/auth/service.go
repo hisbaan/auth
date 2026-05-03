@@ -15,6 +15,7 @@ type AuthService struct {
 	jwtSigningKeyID     string
 	issuer              string
 	cookieDomain        string
+	blockedEmailDomains []string
 	accessTokenExpiry   time.Duration
 	refreshTokenExpiry  time.Duration
 	emailService        *emails.EmailService
@@ -28,13 +29,14 @@ type AuthService struct {
 	eventRepo                  repositories.EventRepository
 }
 
-func NewAuthService(db *sql.DB, signingKey ed25519.PrivateKey, signingKeyID string, issuer string, emailService *emails.EmailService, cookieDomain string) *AuthService {
+func NewAuthService(db *sql.DB, signingKey ed25519.PrivateKey, signingKeyID string, issuer string, emailService *emails.EmailService, cookieDomain string, blockedEmailDomains []string) *AuthService {
 	return &AuthService{
 		db:                         db,
 		jwtSigningKey:              signingKey,
 		jwtSigningKeyID:            signingKeyID,
 		issuer:                     issuer,
 		cookieDomain:               cookieDomain,
+		blockedEmailDomains:        blockedEmailDomains,
 		accessTokenExpiry:          time.Duration(15) * time.Minute,
 		refreshTokenExpiry:         time.Duration(168) * time.Hour, // 7 days
 		emailService:               emailService,

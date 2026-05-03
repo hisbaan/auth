@@ -29,20 +29,21 @@ import (
 )
 
 type Config struct {
-	DatabaseURL      string `env:"DATABASE_URL,required"`
-	BaseURL          string `env:"BASE_URL,required"`
-	Port             string `env:"PORT,required"`
-	JWTSigningKeyPEM string `env:"JWT_SIGNING_KEY_FILE,file,required"`
-	JWTSigningKeyID  string `env:"JWT_SIGNING_KEY_ID,required"`
-	IssuerUrl        string `env:"ISSUER_URL,required"`
-	ResendAPIKey     string `env:"RESEND_API_KEY,required"`
-	FromEmail        string `env:"FROM_EMAIL,required"`
-	FrontendURL      string `env:"FRONTEND_URL,required"`
-	ServiceName      string `env:"SERVICE_NAME,required"`
-	SupportEmail     string `env:"SUPPORT_EMAIL,required"`
-	CookieDomain     string `env:"COOKIE_DOMAIN,required"`
-	CORSOrigins      string `env:"CORS_ALLOWED_ORIGINS"`
-	RunMigrations    bool   `env:"RUN_MIGRATIONS" envDefault:"true"`
+	DatabaseURL         string `env:"DATABASE_URL,required"`
+	BaseURL             string `env:"BASE_URL,required"`
+	Port                string `env:"PORT,required"`
+	JWTSigningKeyPEM    string `env:"JWT_SIGNING_KEY_FILE,file,required"`
+	JWTSigningKeyID     string `env:"JWT_SIGNING_KEY_ID,required"`
+	IssuerUrl           string `env:"ISSUER_URL,required"`
+	ResendAPIKey        string `env:"RESEND_API_KEY,required"`
+	FromEmail           string `env:"FROM_EMAIL,required"`
+	FrontendURL         string `env:"FRONTEND_URL,required"`
+	ServiceName         string `env:"SERVICE_NAME,required"`
+	SupportEmail        string `env:"SUPPORT_EMAIL,required"`
+	CookieDomain        string `env:"COOKIE_DOMAIN,required"`
+	CORSOrigins         string `env:"CORS_ALLOWED_ORIGINS"`
+	BlockedEmailDomains string `env:"BLOCKED_EMAIL_DOMAINS"`
+	RunMigrations       bool   `env:"RUN_MIGRATIONS" envDefault:"true"`
 }
 
 func corsAllowedOrigins(cfg Config) []string {
@@ -142,13 +143,13 @@ func main() {
 	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(internalMiddleware.CORS(corsAllowedOrigins(cfg)))
 
-	authService := auth.NewAuthService(db, signingKey, cfg.JWTSigningKeyID, cfg.IssuerUrl, emailService, cfg.CookieDomain)
+	authService := auth.NewAuthService(db, signingKey, cfg.JWTSigningKeyID, cfg.IssuerUrl, emailService, cfg.CookieDomain, splitCSV(cfg.BlockedEmailDomains))
 	r.Mount("/auth", auth.Router(authService))
 
 	oidcService := oidc.NewOIDCService(db, signingKey, cfg.JWTSigningKeyID, cfg.IssuerUrl, cfg.FrontendURL, emailService, cfg.CookieDomain)
 	r.Mount("/", oidc.Router(oidcService, signingKey.Public().(ed25519.PublicKey), cfg.IssuerUrl))
 
-	usersService := users.NewUsersService(db, signingKey, cfg.IssuerUrl, emailService)
+	usersService := users.NewUsersService(db, signingKey, cfg.IssuerUrl, emailService, splitCSV(cfg.BlockedEmailDomains))
 	r.Mount("/users", users.Router(usersService))
 
 	rolesService := roles.NewRolesService(db)
