@@ -167,7 +167,24 @@ func (s *UsersService) UpdatePassword(ctx context.Context, userID ulid.ULID, par
 	return nil
 }
 
-func (s *UsersService) DeleteUser(ctx context.Context, userID ulid.ULID) error {
+type DeleteUserParams struct {
+	Email string `json:"email"`
+}
+
+func (s *UsersService) DeleteUser(ctx context.Context, userID ulid.ULID, params DeleteUserParams) error {
+	email, err := stringutil.NormalizeEmail(params.Email)
+	if err != nil {
+		return apperror.NewUnauthorized("Unauthorized")
+	}
+
+	user, err := s.userRepo.GetByID(userID)
+	if err != nil {
+		return err
+	}
+	if email != user.Email {
+		return apperror.NewUnauthorized("Unauthorized")
+	}
+
 	events.Log(ctx, &s.eventRepo, events.UserDeleted, &userID, events.UserDeletedData{})
 
 	return s.userRepo.Delete(userID)

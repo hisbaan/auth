@@ -204,9 +204,15 @@ export async function updatePasswordAction(formData: FormData) {
   redirect("/account");
 }
 
-export async function deleteAccountAction() {
+export async function deleteAccountAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "");
+  if (!email) {
+    await setFlash("error", "Enter your email to delete your account");
+    redirect("/account");
+  }
+
   const cookieStore = await cookies();
-  const result = await deleteCurrentUser(cookieStore.toString());
+  const result = await deleteCurrentUser(cookieStore.toString(), email);
   if (!result.ok) {
     await setFlash("error", "Unable to delete account");
     redirect("/account");

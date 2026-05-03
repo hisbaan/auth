@@ -184,10 +184,11 @@ export async function updateCurrentPassword(cookieHeader: string, currentPasswor
   });
 }
 
-export async function deleteCurrentUser(cookieHeader: string) {
+export async function deleteCurrentUser(cookieHeader: string, email: string) {
   return sdkRequest<void>("/users/me", {
     method: "DELETE",
     cookieHeader,
+    body: { email },
   });
 }
 

@@ -105,7 +105,10 @@ func Router(s *UsersService) http.Handler {
 	//	@Description	Deletes the authenticated user's account
 	//	@Tags			users
 	//	@Security		BearerAuth
+	//	@Accept			json
+	//	@Param			request	body	DeleteUserParams	true	"Account deletion confirmation"
 	//	@Success		204
+	//	@Failure		400
 	//	@Failure		401
 	//	@Router			/users/me [delete]
 	r.Delete("/me", func(w http.ResponseWriter, r *http.Request) {
@@ -115,9 +118,15 @@ func Router(s *UsersService) http.Handler {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
 		}
 
-		err = s.DeleteUser(r.Context(), userID)
+		var body DeleteUserParams
+		if err := httputil.ParseBody(w, r, &body); err != nil {
+			return
+		}
+
+		err = s.DeleteUser(r.Context(), userID, body)
 		if err != nil {
 			httputil.HandleError(w, err)
+			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})

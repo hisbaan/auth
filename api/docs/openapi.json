@@ -307,6 +307,14 @@
         },
         "type": "object"
       },
+      "users.DeleteUserParams": {
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "users.ListClientsResponse": {
         "properties": {
           "clients": {
@@ -433,6 +441,12 @@
           "authorization_endpoint": {
             "type": "string"
           },
+          "claims_supported": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "code_challenge_methods_supported": {
             "items": {
               "type": "string"
@@ -462,6 +476,9 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "revocation_endpoint": {
+            "type": "string"
           },
           "scopes_supported": {
             "items": {
@@ -1300,9 +1317,24 @@
     "/users/me": {
       "delete": {
         "description": "Deletes the authenticated user's account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/users.DeleteUserParams"
+              }
+            }
+          },
+          "description": "Account deletion confirmation",
+          "required": true,
+          "x-originalParamName": "request"
+        },
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
           },
           "401": {
             "description": "Unauthorized"

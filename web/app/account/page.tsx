@@ -1,5 +1,6 @@
 import { ClientActions } from "@/components/account/client-actions";
 import { CreateClientDialog } from "@/components/account/create-client-dialog";
+import { DeleteAccountDialog } from "@/components/account/delete-account-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -286,12 +287,7 @@ export default async function AccountPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* TODO confirmation here, make you retype your email */}
-            <form action={deleteAccountAction}>
-              <Button type="submit" variant="destructive">
-                Delete account
-              </Button>
-            </form>
+            <DeleteAccountDialog email={me.email} deleteAccountAction={deleteAccountAction} />
           </CardContent>
         </Card>
       </main>
