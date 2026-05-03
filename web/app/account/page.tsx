@@ -1,6 +1,7 @@
 import { ClientActions } from "@/components/account/client-actions";
 import { CreateClientDialog } from "@/components/account/create-client-dialog";
 import { DeleteAccountDialog } from "@/components/account/delete-account-dialog";
+import { ProfileForm } from "@/components/account/profile-form";
 import { PasswordStrengthField } from "@/components/auth/password-strength-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,36 +68,12 @@ export default async function AccountPage() {
             <CardTitle>Profile</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <form action={updateProfileAction} className="space-y-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  name="username"
-                  defaultValue={me.username}
-                  required
-                />
-              </div>
-              {/* TODO checkmark in the email field if the email is verified */}
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  defaultValue={me.email}
-                  required
-                />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {me.roles.map((role) => (
-                  <Badge key={role} variant="secondary">
-                    {role}
-                  </Badge>
-                ))}
-              </div>
-              <Button type="submit">Save Changes</Button>
-            </form>
+            <ProfileForm
+              email={me.email}
+              roles={me.roles}
+              updateProfileAction={updateProfileAction}
+              username={me.username}
+            />
           </CardContent>
         </Card>
 
