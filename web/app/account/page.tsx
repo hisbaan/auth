@@ -1,4 +1,5 @@
 import { ClientActions } from "@/components/account/client-actions";
+import { ConnectedAppActions } from "@/components/account/connected-app-actions";
 import { CreateClientDialog } from "@/components/account/create-client-dialog";
 import { DeleteAccountDialog } from "@/components/account/delete-account-dialog";
 import { ProfileForm } from "@/components/account/profile-form";
@@ -188,9 +189,6 @@ export default async function AccountPage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Connected Apps</CardTitle>
-            <CardDescription>
-              Apps you have granted access to through your account.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="overflow-x-auto rounded-lg border border-border/60">
@@ -201,7 +199,7 @@ export default async function AccountPage() {
                     <TableHead>Client ID</TableHead>
                     <TableHead>Access</TableHead>
                     <TableHead>Last authorized</TableHead>
-                    <TableHead className="w-[120px] text-right">Actions</TableHead>
+                    <TableHead className="w-[56px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -237,11 +235,11 @@ export default async function AccountPage() {
                         <TableCell className="font-mono text-xs">
                           {formatDateTime(authorization.last_authorized_at)}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <form action={revokeAuthorizationAction}>
-                            <input type="hidden" name="client_id" value={authorization.client_id} />
-                            <Button type="submit" variant="outline">Disconnect</Button>
-                          </form>
+                        <TableCell>
+                          <ConnectedAppActions
+                            authorization={authorization}
+                            revokeAuthorizationAction={revokeAuthorizationAction}
+                          />
                         </TableCell>
                       </TableRow>
                     ))
