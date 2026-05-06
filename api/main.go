@@ -141,6 +141,7 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(internalMiddleware.SecurityHeaders())
 	r.Use(internalMiddleware.CORS(corsAllowedOrigins(cfg)))
 
 	authService := auth.NewAuthService(db, signingKey, cfg.JWTSigningKeyID, cfg.IssuerUrl, emailService, cfg.CookieDomain, splitCSV(cfg.BlockedEmailDomains))

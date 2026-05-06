@@ -123,7 +123,7 @@ export default async function AccountPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="overflow-x-auto rounded-lg border border-border/60">
-              <Table className="min-w-[760px]">
+              <Table className="min-w-190">
                 <TableHeader>
                   <TableRow className="bg-muted/30">
                     <TableHead>Name</TableHead>
@@ -131,7 +131,7 @@ export default async function AccountPage() {
                     <TableHead>Redirect URI</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-[56px]"></TableHead>
+                    <TableHead className="w-14"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -154,7 +154,7 @@ export default async function AccountPage() {
                         <TableCell>
                           <CopyableCode value={client.id} />
                         </TableCell>
-                        <TableCell className="max-w-[280px] truncate font-mono text-xs">
+                        <TableCell className="max-w-70 truncate font-mono text-xs">
                           {client.redirect_uri}
                         </TableCell>
                         <TableCell className="font-mono text-xs">
@@ -192,14 +192,14 @@ export default async function AccountPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="overflow-x-auto rounded-lg border border-border/60">
-              <Table className="min-w-[760px]">
+              <Table className="min-w-190">
                 <TableHeader>
                   <TableRow className="bg-muted/30">
                     <TableHead>App</TableHead>
                     <TableHead>Client ID</TableHead>
                     <TableHead>Access</TableHead>
                     <TableHead>Last authorized</TableHead>
-                    <TableHead className="w-[56px]"></TableHead>
+                    <TableHead className="w-14"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -215,7 +215,7 @@ export default async function AccountPage() {
                         <TableCell>
                           <div className="space-y-1">
                             <div className="font-medium">{authorization.name}</div>
-                            <div className="max-w-[280px] truncate font-mono text-xs text-muted-foreground">
+                            <div className="max-w-70 truncate font-mono text-xs text-muted-foreground">
                               {authorization.redirect_uri}
                             </div>
                           </div>
