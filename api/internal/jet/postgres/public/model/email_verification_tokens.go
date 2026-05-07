@@ -18,4 +18,5 @@ type EmailVerificationTokens struct {
 	ExpiresAt time.Time
 	RevokedAt *time.Time
 	CreatedAt time.Time
+	Email     string
 }

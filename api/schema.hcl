@@ -291,6 +291,10 @@ table "email_verification_tokens" {
     type = bytea
     null = false
   }
+  column "email" {
+    type = text
+    null = false
+  }
   column "expires_at" {
     type = timestamptz
     null = false

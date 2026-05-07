@@ -48,6 +48,28 @@ func (r *EmailVerificationTokenRepository) GetByHash(hash []byte) (*model.EmailV
 	return &tokens[0], nil
 }
 
+func (r *EmailVerificationTokenRepository) ActiveEmailVerificationWillConflict(userID ulid.ULID, email string) (bool, error) {
+	query := EmailVerificationTokens.SELECT(EmailVerificationTokens.ID).
+		WHERE(
+			AND(
+				EmailVerificationTokens.Email.EQ(String(email)),
+				EmailVerificationTokens.UserID.NOT_EQ(Bytea(userID.Bytes())),
+				EmailVerificationTokens.RevokedAt.IS_NULL(),
+				EmailVerificationTokens.ExpiresAt.GT(TimestampzT(time.Now())),
+			),
+		).
+		LIMIT(1)
+
+	var tokens []model.EmailVerificationTokens
+	err := query.Query(r.db, &tokens)
+	if err != nil {
+		log.Printf("[ERROR] Active email verification conflict query failed: %v", err)
+		return false, apperror.NewInternalServerError("Database query error")
+	}
+
+	return len(tokens) > 0, nil
+}
+
 func (r *EmailVerificationTokenRepository) Revoke(id ulid.ULID) error {
 	_, err := EmailVerificationTokens.UPDATE().
 		SET(EmailVerificationTokens.RevokedAt.SET(TimestampzT(time.Now()))).

@@ -71,6 +71,7 @@ func (s *AuthService) CreateUser(ctx context.Context, params CreateUserParams) e
 		ID:        ulid.Make().Bytes(),
 		UserID:    user.ID,
 		TokenHash: hashedToken,
+		Email:     email,
 		ExpiresAt: time.Now().Add(time.Duration(24) * time.Hour),
 		RevokedAt: nil,
 		CreatedAt: time.Now(),
@@ -455,7 +456,7 @@ func (s *AuthService) VerifyEmail(ctx context.Context, params VerifyEmailParams)
 	}
 
 	userID := ulidutil.MustFromBytes(verificationToken.UserID)
-	if err := s.userRepo.SetEmailVerified(userID); err != nil {
+	if err := s.userRepo.UpdateEmail(userID, verificationToken.Email, true); err != nil {
 		return err
 	}
 	events.Log(ctx, &s.eventRepo, events.UserEmailVerified, &userID, events.UserEmailVerifiedData{})

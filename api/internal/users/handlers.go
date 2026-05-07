@@ -67,38 +67,34 @@ func (s *UsersService) UpdateUser(ctx context.Context, userID ulid.ULID, params 
 		return err
 	}
 
-	user := model.Users{
-		ID:       userID.Bytes(),
-		Email:    email,
-		Username: username,
-	}
-
-	willConflict, err := s.userRepo.WillConflict(user)
-	if err != nil {
-		return err
-	}
-	if willConflict {
-		return apperror.NewConflict("Username or email already in use")
-	}
-
 	existing, err := s.userRepo.GetByID(userID)
 	if err != nil {
 		return err
 	}
-	if existing.Email != email {
-		user.EmailVerified = false
 
-		userID := ulidutil.MustFromBytes(user.ID)
+	if existing.Email != email {
+		if willConflict, err := s.userRepo.EmailWillConflict(userID, email); willConflict {
+			return apperror.NewConflict("Email already in use")
+		} else if err != nil {
+			return err
+		}
+		if willConflict, err := s.emailVerificationTokenRepo.ActiveEmailVerificationWillConflict(userID, email); willConflict {
+			return apperror.NewConflict("Email already in use")
+		} else if err != nil {
+			return err
+		}
+
+		s.emailVerificationTokenRepo.RevokeByUserID(userID)
 		events.Log(ctx, &s.eventRepo, events.UserEmailVerificationRevoked, &userID, events.UserEmailVerificationRevokedData{
 			Email: existing.Email,
 		})
-		s.emailVerificationTokenRepo.RevokeByUserID(userID)
 
 		token, hashedToken := tokenutil.Generate()
 		emailVerificationTokenModel := model.EmailVerificationTokens{
 			ID:        ulid.Make().Bytes(),
-			UserID:    user.ID,
+			UserID:    userID.Bytes(),
 			TokenHash: hashedToken,
+			Email:     email,
 			ExpiresAt: time.Now().Add(time.Duration(24) * time.Hour),
 			RevokedAt: nil,
 			CreatedAt: time.Now(),
@@ -112,11 +108,18 @@ func (s *UsersService) UpdateUser(ctx context.Context, userID ulid.ULID, params 
 		go s.emailService.SendVerifyEmail(email, username, urlEncodedToken)
 	}
 
-	if err := s.userRepo.Update(user); err != nil {
-		return err
+	if existing.Username != username {
+		if willConflict, err := s.userRepo.UsernameWillConflict(userID, username); willConflict {
+			return apperror.NewConflict("Username already in use")
+		} else if err != nil {
+			return err
+		}
+
+		if err := s.userRepo.UpdateUsername(userID, username); err != nil {
+			return err
+		}
 	}
 
-	// TODO include update fields in event data
 	events.Log(ctx, &s.eventRepo, events.UserUpdated, &userID, events.UserUpdatedData{})
 
 	return nil

@@ -82,10 +82,53 @@ func (r *UserRepository) Update(user model.Users) error {
 	return nil
 }
 
+func (r *UserRepository) UpdateUsername(id ulid.ULID, username string) error {
+	user := model.Users{
+		ID:        id.Bytes(),
+		Username:  username,
+		UpdatedAt: time.Now(),
+	}
+
+	_, err := Users.UPDATE(Users.Username, Users.UpdatedAt).MODEL(user).WHERE(Users.ID.EQ(Bytea(user.ID))).Exec(r.db)
+	if err != nil {
+		log.Printf("[ERROR] Update username failed: %v", err)
+		return apperror.NewInternalServerError("Database query error")
+	}
+	return nil
+}
+
+func (r *UserRepository) UpdateEmail(id ulid.ULID, email string, verified bool) error {
+	user := model.Users{
+		ID:            id.Bytes(),
+		Email:         email,
+		EmailVerified: verified,
+		UpdatedAt:     time.Now(),
+	}
+
+	_, err := Users.UPDATE(Users.Email, Users.EmailVerified, Users.UpdatedAt).MODEL(user).WHERE(Users.ID.EQ(Bytea(user.ID))).Exec(r.db)
+	if err != nil {
+		log.Printf("[ERROR] Update email failed: %v", err)
+		return apperror.NewInternalServerError("Database query error")
+	}
+	return nil
+}
+
 func (r *UserRepository) SetPassword(id ulid.ULID, passwordHash string) error {
 	_, err := Users.UPDATE(Users.PasswordHash).SET(Users.PasswordHash.SET(String(passwordHash))).WHERE(Users.ID.EQ(Bytea(id.Bytes()))).Exec(r.db)
 	if err != nil {
 		log.Printf("[ERROR] Update password failed: %v", err)
+		return apperror.NewInternalServerError("Database query error")
+	}
+	return nil
+}
+
+func (r *UserRepository) SetEmailUnverified(id ulid.ULID) error {
+	_, err := Users.UPDATE(Users.EmailVerified).
+		SET(Users.EmailVerified.SET(Bool(false)), Users.UpdatedAt.SET(TimestampzT(time.Now()))).
+		WHERE(Users.ID.EQ(Bytea(id.Bytes()))).
+		Exec(r.db)
+	if err != nil {
+		log.Printf("[ERROR] Set email unverified failed: %v", err)
 		return apperror.NewInternalServerError("Database query error")
 	}
 	return nil
@@ -110,6 +153,46 @@ func (r *UserRepository) Delete(id ulid.ULID) error {
 		return apperror.NewInternalServerError("Database query error")
 	}
 	return nil
+}
+
+func (r *UserRepository) EmailWillConflict(id ulid.ULID, email string) (bool, error) {
+	query := Users.SELECT(Users.ID).
+		WHERE(
+			AND(
+				Users.Email.EQ(String(email)),
+				Users.ID.NOT_EQ(Bytea(id.Bytes())),
+			),
+		).
+		LIMIT(1)
+
+	var users []model.Users
+	err := query.Query(r.db, &users)
+	if err != nil {
+		log.Printf("[ERROR] Email will conflict query failed: %v", err)
+		return false, apperror.NewInternalServerError("Database query error")
+	}
+
+	return len(users) > 0, nil
+}
+
+func (r *UserRepository) UsernameWillConflict(id ulid.ULID, username string) (bool, error) {
+	query := Users.SELECT(Users.ID).
+		WHERE(
+			AND(
+				Users.Username.EQ(String(username)),
+				Users.ID.NOT_EQ(Bytea(id.Bytes())),
+			),
+		).
+		LIMIT(1)
+
+	var users []model.Users
+	err := query.Query(r.db, &users)
+	if err != nil {
+		log.Printf("[ERROR] Username will conflict query failed: %v", err)
+		return false, apperror.NewInternalServerError("Database query error")
+	}
+
+	return len(users) > 0, nil
 }
 
 func (r *UserRepository) WillConflict(user model.Users) (bool, error) {
