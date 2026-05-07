@@ -1,9 +1,23 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { DOCS_URL } from "@/lib/config";
+import { getCurrentUser } from "@/lib/sdk";
 
-export default function Home() {
+export default async function Home() {
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore.toString();
+
+  if (cookieHeader) {
+    const user = await getCurrentUser(cookieHeader);
+
+    if (user) {
+      redirect("/account");
+    }
+  }
+
   return (
     <div className="min-h-screen">
       <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
