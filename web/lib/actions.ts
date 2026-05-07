@@ -57,16 +57,17 @@ export async function loginAction(formData: FormData) {
   const next = String(formData.get("next") ?? "").trim();
   const callbackUrl = String(formData.get("callback_url") ?? "").trim();
   const state = String(formData.get("state") ?? "").trim();
+  const loginRedirect = `/login?next=${encodeURIComponent(next)}&callback_url=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(state)}&email=${encodeURIComponent(email)}`;
 
   if (!email || !password) {
     await setFlash("error", "Invalid credentials");
-    redirect(`/login?next=${encodeURIComponent(next)}&callback_url=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(state)}`);
+    redirect(loginRedirect);
   }
 
   const result = await loginWithPassword(email, password);
   if (!result.ok || !result.data) {
     await setFlash("error", "Invalid credentials");
-    redirect(`/login?next=${encodeURIComponent(next)}&callback_url=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(state)}`);
+    redirect(loginRedirect);
   }
 
   const cookieStore = await cookies();

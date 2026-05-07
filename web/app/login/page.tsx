@@ -23,6 +23,7 @@ type LoginPageProps = {
     next?: string;
     callback_url?: string;
     state?: string;
+    email?: string;
   }>;
 };
 
@@ -70,6 +71,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 id="email"
                 name="email"
                 type="email"
+                defaultValue={params.email ?? ""}
                 required
                 autoComplete="email"
               />
