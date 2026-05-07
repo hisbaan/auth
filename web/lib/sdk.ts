@@ -11,6 +11,7 @@ import type {
 	ListRolesResponse,
 	ListUsersResponse,
 	LoginResponse,
+	UpdateUserResponse,
 	User,
 } from "@/lib/types";
 
@@ -166,11 +167,11 @@ export async function getCurrentUser(cookieHeader: string): Promise<User | null>
 }
 
 export async function updateCurrentUser(cookieHeader: string, username: string, email: string) {
-  return sdkRequest<void>("/users/me", {
-    method: "PUT",
-    cookieHeader,
-    body: { username, email },
-  });
+	return sdkRequest<UpdateUserResponse>("/users/me", {
+		method: "PUT",
+		cookieHeader,
+		body: { username, email },
+	});
 }
 
 export async function updateCurrentPassword(cookieHeader: string, currentPassword: string, newPassword: string) {

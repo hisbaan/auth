@@ -57,34 +57,42 @@ type UpdateUserParams struct {
 	Username string `json:"username"`
 }
 
-func (s *UsersService) UpdateUser(ctx context.Context, userID ulid.ULID, params UpdateUserParams) error {
+type UpdateUserResponse struct {
+	EmailVerificationRequired bool `json:"email_verification_required"`
+}
+
+func (s *UsersService) UpdateUser(ctx context.Context, userID ulid.ULID, params UpdateUserParams) (UpdateUserResponse, error) {
 	username, err := stringutil.ValidateUsername(params.Username)
 	if err != nil {
-		return err
+		return UpdateUserResponse{}, err
 	}
 	email, err := stringutil.ValidateUserEmail(params.Email, s.emailService.SenderAddress(), s.blockedEmailDomains)
 	if err != nil {
-		return err
+		return UpdateUserResponse{}, err
 	}
 
 	existing, err := s.userRepo.GetByID(userID)
 	if err != nil {
-		return err
+		return UpdateUserResponse{}, err
 	}
+
+	response := UpdateUserResponse{}
 
 	if existing.Email != email {
 		if willConflict, err := s.userRepo.EmailWillConflict(userID, email); willConflict {
-			return apperror.NewConflict("Email already in use")
+			return UpdateUserResponse{}, apperror.NewConflict("Email already in use")
 		} else if err != nil {
-			return err
+			return UpdateUserResponse{}, err
 		}
 		if willConflict, err := s.emailVerificationTokenRepo.ActiveEmailVerificationWillConflict(userID, email); willConflict {
-			return apperror.NewConflict("Email already in use")
+			return UpdateUserResponse{}, apperror.NewConflict("Email already in use")
 		} else if err != nil {
-			return err
+			return UpdateUserResponse{}, err
 		}
 
-		s.emailVerificationTokenRepo.RevokeByUserID(userID)
+		if err := s.emailVerificationTokenRepo.RevokeByUserID(userID); err != nil {
+			return UpdateUserResponse{}, err
+		}
 		events.Log(ctx, &s.eventRepo, events.UserEmailVerificationRevoked, &userID, events.UserEmailVerificationRevokedData{
 			Email: existing.Email,
 		})
@@ -99,30 +107,33 @@ func (s *UsersService) UpdateUser(ctx context.Context, userID ulid.ULID, params 
 			RevokedAt: nil,
 			CreatedAt: time.Now(),
 		}
-		s.emailVerificationTokenRepo.Create(emailVerificationTokenModel)
+		if err := s.emailVerificationTokenRepo.Create(emailVerificationTokenModel); err != nil {
+			return UpdateUserResponse{}, err
+		}
 		events.Log(ctx, &s.eventRepo, events.UserEmailVerificationCreated, &userID, events.UserEmailVerificationCreatedData{
 			Email: email,
 		})
 		urlEncodedToken := tokenutil.URLEncode(token)
 
 		go s.emailService.SendVerifyEmail(email, username, urlEncodedToken)
+		response.EmailVerificationRequired = true
 	}
 
 	if existing.Username != username {
 		if willConflict, err := s.userRepo.UsernameWillConflict(userID, username); willConflict {
-			return apperror.NewConflict("Username already in use")
+			return UpdateUserResponse{}, apperror.NewConflict("Username already in use")
 		} else if err != nil {
-			return err
+			return UpdateUserResponse{}, err
 		}
 
 		if err := s.userRepo.UpdateUsername(userID, username); err != nil {
-			return err
+			return UpdateUserResponse{}, err
 		}
 	}
 
 	events.Log(ctx, &s.eventRepo, events.UserUpdated, &userID, events.UserUpdatedData{})
 
-	return nil
+	return response, nil
 }
 
 type UpdatePasswordParams struct {

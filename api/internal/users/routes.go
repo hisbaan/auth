@@ -46,7 +46,7 @@ func Router(s *UsersService) http.Handler {
 	//	@Security		BearerAuth
 	//	@Accept			json
 	//	@Param			request	body	UpdateUserParams	true	"User update details"
-	//	@Success		204
+	//	@Success		200	{object}	UpdateUserResponse
 	//	@Failure		400
 	//	@Failure		401
 	//	@Failure		409
@@ -63,12 +63,13 @@ func Router(s *UsersService) http.Handler {
 			return
 		}
 
-		err = s.UpdateUser(r.Context(), userID, body)
+		response, err := s.UpdateUser(r.Context(), userID, body)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
 		}
-		w.WriteHeader(http.StatusNoContent)
+
+		httputil.JSONResponse(w, http.StatusOK, response)
 	})
 
 	//	@Summary		Change password

@@ -173,15 +173,20 @@ export async function updateProfileAction(formData: FormData) {
     redirect("/account");
   }
 
-  const cookieStore = await cookies();
-  const result = await updateCurrentUser(cookieStore.toString(), username, email);
-  if (!result.ok) {
-    await setFlash("error", "Unable to update profile");
-    redirect("/account");
-  }
+	const cookieStore = await cookies();
+	const result = await updateCurrentUser(cookieStore.toString(), username, email);
+	if (!result.ok || !result.data) {
+		await setFlash("error", "Unable to update profile");
+		redirect("/account");
+	}
 
-  await setFlash("success", "Profile updated");
-  redirect("/account");
+	if (result.data.email_verification_required) {
+		await setFlash("success", "Profile updated. Check your email to verify the new address.");
+		redirect("/account");
+	}
+
+	await setFlash("success", "Profile updated");
+	redirect("/account");
 }
 
 export async function updatePasswordAction(formData: FormData) {

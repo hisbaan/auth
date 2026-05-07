@@ -8,6 +8,10 @@ export type User = {
   updated_at: string;
 };
 
+export type UpdateUserResponse = {
+  email_verification_required: boolean;
+};
+
 export type LoginResponse = {
   access_token: string;
   token_type: string;

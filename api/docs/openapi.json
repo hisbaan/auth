@@ -365,6 +365,14 @@
         },
         "type": "object"
       },
+      "users.UpdateUserResponse": {
+        "properties": {
+          "email_verification_required": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "users.UpdateUserRoleBody": {
         "properties": {
           "role": {
@@ -1392,8 +1400,15 @@
           "x-originalParamName": "request"
         },
         "responses": {
-          "204": {
-            "description": "No Content"
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/users.UpdateUserResponse"
+                }
+              }
+            },
+            "description": "OK"
           },
           "400": {
             "description": "Bad Request"
