@@ -17,7 +17,7 @@ const frameSources = ["'self'", originFromUrl(docsUrl)].filter(Boolean).join(" "
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isProduction ? "" : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self'",
