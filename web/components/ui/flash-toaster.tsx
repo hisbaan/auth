@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 type FlashPayload = {
@@ -50,9 +49,6 @@ function clearFlashCookie() {
 }
 
 export function FlashToaster() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
   React.useEffect(() => {
     const payload = getFlashCookie();
     if (!payload) {
@@ -66,7 +62,7 @@ export function FlashToaster() {
     }
 
     clearFlashCookie();
-  }, [pathname, searchParams]);
+  });
 
   return null;
 }
