@@ -15,8 +15,9 @@ import { loginAction } from "@/lib/actions";
 import { cookies } from "next/headers";
 import { getCurrentUser } from "@/lib/sdk";
 import { redirect } from "next/navigation";
-import { sanitizeRelativePath } from "@/lib/utils";
+import { sanitizeRedirectPathOrUrl } from "@/lib/utils";
 import { isAllowedCallbackUrl } from "@/lib/callback";
+import { API_BASE_URL } from "@/lib/config";
 
 type LoginPageProps = {
   searchParams: Promise<{
@@ -38,7 +39,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     const callbackUrl = params.callback_url ?? "";
     const state = params.state ?? "";
 
-    let destination = sanitizeRelativePath(next, "/account");
+    let destination = sanitizeRedirectPathOrUrl(next, "/account", [new URL(API_BASE_URL).origin]);
     if (callbackUrl && isAllowedCallbackUrl(callbackUrl)) {
       destination = `/authorize?callback_url=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(state)}`;
     }

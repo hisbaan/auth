@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { buildAuthorizeSuccessUrl, isAllowedCallbackUrl } from "@/lib/callback";
 import { API_BASE_URL, COOKIE_DOMAIN, COOKIE_SECURE } from "@/lib/config";
-import { withEncodedRequest } from "@/lib/http";
+import { parseEncodedRequest, withEncodedRequest } from "@/lib/http";
 import {
 	addUserRole,
 	createCurrentUserClient,
@@ -32,7 +32,7 @@ import {
 import { mapAdminUserEvents } from "@/lib/event-utils";
 import { mapAdminUserSessions } from "@/lib/session-utils";
 import { setFlash } from "@/lib/flash";
-import { sanitizeRelativePath } from "@/lib/utils";
+import { sanitizeRedirectPathOrUrl } from "@/lib/utils";
 
 function cookieOptions(maxAge: number) {
   return {
@@ -74,7 +74,7 @@ export async function loginAction(formData: FormData) {
   cookieStore.set("access_token", result.data.access_token, cookieOptions(result.data.expires_in));
   cookieStore.set("refresh_token", result.data.refresh_token, cookieOptions(60 * 60 * 24 * 7));
 
-  let destination = sanitizeRelativePath(next, "/account");
+  let destination = sanitizeRedirectPathOrUrl(next, "/account", [new URL(API_BASE_URL).origin]);
   if (callbackUrl && isAllowedCallbackUrl(callbackUrl)) {
     destination = `/authorize?callback_url=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(state)}`;
   }
@@ -147,8 +147,9 @@ export async function logoutAction() {
 
 export async function authorizeConsentAction(formData: FormData) {
 	const request = String(formData.get("request") ?? "").trim();
-	const clientId = String(formData.get("client_id") ?? "").trim();
-	const scope = String(formData.get("scope") ?? "").trim();
+	const authorizeParams = parseEncodedRequest(request);
+	const clientId = authorizeParams?.get("client_id")?.trim() ?? "";
+	const scope = authorizeParams?.get("scope")?.trim() ?? "";
 
 	if (!request || !clientId || !scope) {
 		await setFlash("error", "Invalid authorize request");
