@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 const MaxRequestBodyBytes = 1 << 20
@@ -73,18 +74,49 @@ func WithQuery(rawURL string, values url.Values) (string, error) {
 }
 
 func ClientInfoFromRequest(r *http.Request) ClientInfo {
-	ip := r.RemoteAddr
-	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-		ip = forwarded
-	}
-	if host, _, err := net.SplitHostPort(ip); err == nil {
-		ip = host
-	}
-
 	return ClientInfo{
-		IP:        ip,
+		IP:        clientIPFromRequest(r),
 		UserAgent: r.UserAgent(),
 	}
+}
+
+func clientIPFromRequest(r *http.Request) string {
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		for entry := range strings.SplitSeq(forwarded, ",") {
+			if ip := normalizeIP(entry); ip != "" {
+				return ip
+			}
+		}
+	}
+
+	if ip := normalizeIP(r.Header.Get("X-Real-IP")); ip != "" {
+		return ip
+	}
+
+	if ip := normalizeIP(r.RemoteAddr); ip != "" {
+		return ip
+	}
+
+	return "0.0.0.0"
+}
+
+func normalizeIP(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+
+	if ip := net.ParseIP(value); ip != nil {
+		return ip.String()
+	}
+
+	if host, _, err := net.SplitHostPort(value); err == nil {
+		if ip := net.ParseIP(host); ip != nil {
+			return ip.String()
+		}
+	}
+
+	return ""
 }
 
 func WithClientInfo(ctx context.Context, info ClientInfo) context.Context {
