@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { withAuth } from "@/lib/auth";
 import { API_BASE_URL, DOCS_URL } from "@/lib/config";
-import { parseEncodedRequest, withEncodedRequest } from "@/lib/http";
+import { parseEncodedRequest } from "@/lib/http";
 import { getOIDCScopeDetail } from "@/lib/oidc";
 import { getAuthorizeClientInfo } from "@/lib/sdk";
 import { authorizeConsentAction } from "@/lib/actions";
@@ -41,7 +41,7 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 		);
 	}
 
-	const loginRedirect = withEncodedRequest("/authorize", request);
+	const loginRedirect = `${API_BASE_URL}/authorize?${request}`;
 	const { cookieHeader } = await withAuth({
 		loginRedirect: `/login?next=${encodeURIComponent(loginRedirect)}`,
 	});
@@ -133,8 +133,6 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 
 							<form action={authorizeConsentAction} className="space-y-3">
 								<input type="hidden" name="request" value={request} />
-								<input type="hidden" name="client_id" value={client.id} />
-								<input type="hidden" name="scope" value={scope} />
 								<Button type="submit" className="w-full">Allow access</Button>
 							</form>
 
