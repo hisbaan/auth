@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const apiBaseUrl = process.env.AUTH_API_URL!;
+const apiBaseUrl = process.env.API_BASE_URL!;
 const docsUrl = process.env.AUTH_DOCS_URL!;
 const isProduction = process.env.NODE_ENV === "production";
 
