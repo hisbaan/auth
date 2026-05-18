@@ -12,8 +12,12 @@ function originFromUrl(value: string): string | null {
   }
 }
 
-const connectSources = ["'self'", originFromUrl(apiBaseUrl)].filter(Boolean).join(" ");
-const frameSources = ["'self'", originFromUrl(docsUrl)].filter(Boolean).join(" ");
+const connectSources = ["'self'", originFromUrl(apiBaseUrl)]
+  .filter(Boolean)
+  .join(" ");
+const frameSources = ["'self'", originFromUrl(docsUrl)]
+  .filter(Boolean)
+  .join(" ");
 
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -61,14 +65,35 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  async headers() {
-    return [
-      {
-        source: "/(.*)",
-        headers: securityHeaders,
-      },
-    ];
-  },
+  skipTrailingSlashRedirect: true,
+  headers: async () => [
+    {
+      source: "/(.*)",
+      headers: securityHeaders,
+    },
+  ],
+  rewrites: async () =>
+    process.env.NODE_ENV === "development"
+      ? [
+          {
+            source: "/docs",
+            destination: "http://localhost:5173/docs/",
+          },
+          {
+            source: "/docs/:path*",
+            destination: "http://localhost:5173/docs/:path*",
+          },
+        ]
+      : [
+          {
+            source: "/docs",
+            destination: "/docs/index.html",
+          },
+          {
+            source: "/docs/",
+            destination: "/docs/index.html",
+          },
+        ],
 };
 
 export default nextConfig;

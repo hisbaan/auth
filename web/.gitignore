@@ -17,6 +17,10 @@
 /.next/
 /out/
 
+# vitepress
+/docs/.vitepress/cache/
+public/docs
+
 # production
 /build
 
