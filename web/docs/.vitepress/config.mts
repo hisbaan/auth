@@ -5,6 +5,7 @@ export default defineConfig({
   title: "auth docs",
   description: "auth docs",
   outDir: "../public/docs",
+  base: "/docs/",
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
 
