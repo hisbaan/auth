@@ -419,12 +419,27 @@ func (s *OIDCService) TokenRefreshToken(ctx context.Context, params TokenRefresh
 	if err != nil {
 		return TokenResponse{}, err
 	}
+	idToken, err := GenerateOIDCToken(GenerateOIDCTokenParams{
+		privateKey: s.jwtSigningKey,
+		keyID:      s.jwtSigningKeyID,
+		issuer:     s.issuer,
+		userID:     refreshTokenUserID,
+		clientID:   clientID,
+		user:       user,
+		scopes:     userClientAuthorization.GrantedScopes,
+		nonce:      nil,
+		expiry:     time.Duration(15) * time.Minute,
+	})
+	if err != nil {
+		return TokenResponse{}, err
+	}
 
 	return TokenResponse{
 		AccessToken:  sessionTokens.AccessToken,
 		TokenType:    "Bearer",
 		ExpiresIn:    sessionTokens.ExpiresIn,
 		RefreshToken: sessionTokens.RefreshToken,
+		IDToken:      idToken,
 	}, nil
 }
 

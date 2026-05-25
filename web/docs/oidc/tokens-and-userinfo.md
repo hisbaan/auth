@@ -57,13 +57,14 @@ Successful response:
   "access_token": "...",
   "token_type": "Bearer",
   "expires_in": 900,
-  "refresh_token": "..."
+  "refresh_token": "...",
+  "id_token": "..."
 }
 ```
 
 Refresh tokens rotate. Store the new `refresh_token` from each successful refresh and discard the old one.
 
-The refresh-token response does not include a new `id_token`.
+The refresh-token response includes a new `id_token`. Validate it before trusting its identity claims. Refresh-issued ID tokens do not include a `nonce` because no new authorization request was made.
 
 ## UserInfo
 

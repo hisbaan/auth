@@ -36,9 +36,10 @@ Use this checklist when integrating a client application.
 
 - Validate ID token signatures using JWKS.
 - Validate `iss`, `aud`, `exp`, and `nonce`.
+- Use ID token claims for client-side authentication and identity state, not API authorization.
 - Store refresh tokens securely.
 - Replace stored refresh tokens after every successful refresh.
-- Treat access tokens as bearer credentials.
+- Treat access tokens as bearer credentials and avoid depending on their internal format.
 
 ## UserInfo
 

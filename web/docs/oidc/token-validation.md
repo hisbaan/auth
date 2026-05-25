@@ -4,7 +4,7 @@ outline: deep
 
 # Token Validation
 
-Clients should validate ID tokens before trusting their claims.
+Clients should validate ID tokens before trusting their identity claims. Use access tokens as bearer credentials for `/userinfo` and API calls; do not use ID tokens to authorize API requests.
 
 ## JWKS
 
@@ -61,4 +61,10 @@ For every ID token:
 6. If you sent `nonce`, require the returned `nonce` to match.
 7. Treat optional claims as absent unless their corresponding scopes were granted.
 
-Access tokens are bearer tokens for the auth service. Client applications normally use them with `/userinfo` and should not rely on their internal format unless explicitly supported by your integration.
+## Access Tokens
+
+Access tokens are bearer credentials for the auth service. Send them to `/userinfo` or other APIs that accept this issuer's access tokens.
+
+Client applications should not parse access tokens or depend on their internal claims unless that token format is explicitly documented for your integration. Even when an access token looks like a JWT, treat its structure as an implementation detail unless the API contract says otherwise.
+
+ID tokens are the tokens clients validate and read for authentication and identity claims. Access tokens are the tokens clients present to APIs.
