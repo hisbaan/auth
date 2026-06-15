@@ -19,6 +19,10 @@ export type LoginResponse = {
   refresh_token: string;
 };
 
+export type VerifyEmailResponse = {
+  continue_url?: string;
+};
+
 export type ListUsersResponse = {
   users: User[];
   next_cursor?: string;

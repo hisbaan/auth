@@ -167,7 +167,7 @@ func Router(s *AuthService) http.Handler {
 	//	@Summary		Logout user
 	//	@Description	Clears authentication cookies
 	//	@Tags			auth
-	//	@Success		204
+	//	@Success		200	{object} VerifyEmailResponse
 	//	@Router			/auth/logout [post]
 	r.Post("/logout", func(w http.ResponseWriter, r *http.Request) {
 		token := ""
@@ -241,7 +241,7 @@ func Router(s *AuthService) http.Handler {
 	//	@Tags			auth
 	//	@Accept			json
 	//	@Param			request	body	VerifyEmailParams	true	"Email verification token"
-	//	@Success		204
+	//	@Success		200	{object}	VerifyEmailResponse
 	//	@Failure		400
 	//	@Failure		500
 	//	@Router			/auth/verify-email [post]
@@ -251,13 +251,13 @@ func Router(s *AuthService) http.Handler {
 			return
 		}
 
-		err := s.VerifyEmail(r.Context(), body)
+		response, err := s.VerifyEmail(r.Context(), body)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
 		}
 
-		w.WriteHeader(http.StatusNoContent)
+		httputil.JSONResponse(w, http.StatusOK, response)
 	})
 
 	return r

@@ -24,6 +24,7 @@ type emailVerificationTokensTable struct {
 	RevokedAt postgres.ColumnTimestampz
 	CreatedAt postgres.ColumnTimestampz
 	Email     postgres.ColumnString
+	ReturnTo  postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -72,8 +73,9 @@ func newEmailVerificationTokensTableImpl(schemaName, tableName, alias string) em
 		RevokedAtColumn = postgres.TimestampzColumn("revoked_at")
 		CreatedAtColumn = postgres.TimestampzColumn("created_at")
 		EmailColumn     = postgres.StringColumn("email")
-		allColumns      = postgres.ColumnList{IDColumn, UserIDColumn, TokenHashColumn, ExpiresAtColumn, RevokedAtColumn, CreatedAtColumn, EmailColumn}
-		mutableColumns  = postgres.ColumnList{UserIDColumn, TokenHashColumn, ExpiresAtColumn, RevokedAtColumn, CreatedAtColumn, EmailColumn}
+		ReturnToColumn  = postgres.StringColumn("return_to")
+		allColumns      = postgres.ColumnList{IDColumn, UserIDColumn, TokenHashColumn, ExpiresAtColumn, RevokedAtColumn, CreatedAtColumn, EmailColumn, ReturnToColumn}
+		mutableColumns  = postgres.ColumnList{UserIDColumn, TokenHashColumn, ExpiresAtColumn, RevokedAtColumn, CreatedAtColumn, EmailColumn, ReturnToColumn}
 		defaultColumns  = postgres.ColumnList{}
 	)
 
@@ -88,6 +90,7 @@ func newEmailVerificationTokensTableImpl(schemaName, tableName, alias string) em
 		RevokedAt: RevokedAtColumn,
 		CreatedAt: CreatedAtColumn,
 		Email:     EmailColumn,
+		ReturnTo:  ReturnToColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

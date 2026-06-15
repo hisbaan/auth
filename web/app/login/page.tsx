@@ -18,6 +18,7 @@ import { redirect } from "next/navigation";
 import { sanitizeRedirectPathOrUrl } from "@/lib/utils";
 import { isAllowedCallbackUrl } from "@/lib/callback";
 import { API_BASE_URL } from "@/lib/config";
+import { withQuery } from "@/lib/http";
 
 type LoginPageProps = {
   searchParams: Promise<{
@@ -109,7 +110,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               Forgot password?
             </Link>
             <Link
-              href="/register"
+              href={withQuery("/register", { next: params.next })}
               className="text-muted-foreground hover:text-foreground"
             >
               Create account

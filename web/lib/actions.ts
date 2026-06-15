@@ -66,6 +66,10 @@ export async function loginAction(formData: FormData) {
 
   const result = await loginWithPassword(email, password);
   if (!result.ok || !result.data) {
+    if (result.status === 403) {
+      await setFlash("error", "Email verification required. Check your email to continue.");
+      redirect(loginRedirect);
+    }
     await setFlash("error", "Invalid credentials");
     redirect(loginRedirect);
   }
@@ -86,20 +90,32 @@ export async function registerAction(formData: FormData) {
   const username = String(formData.get("username") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const next = String(formData.get("next") ?? "").trim();
+  const apiOrigin = new URL(API_BASE_URL).origin;
+  const safeNext = sanitizeRedirectPathOrUrl(next, "", [apiOrigin]);
+  const returnTo = (() => {
+    try {
+      const url = new URL(safeNext);
+      return url.origin === apiOrigin && url.pathname === "/authorize" ? url.toString() : "";
+    } catch {
+      return "";
+    }
+  })();
+  const registerRedirect = safeNext ? `/register?next=${encodeURIComponent(safeNext)}` : "/register";
 
   if (!username || !email || !password) {
     await setFlash("error", "All fields are required");
-    redirect("/register");
+    redirect(registerRedirect);
   }
 
-  const result = await registerUser(username, email, password);
+  const result = await registerUser(username, email, password, returnTo || undefined);
   if (!result.ok) {
     await setFlash("error", "Unable to create account");
-    redirect("/register");
+    redirect(registerRedirect);
   }
 
   await setFlash("success", "Account created. Check your email to verify.");
-  redirect("/register");
+  redirect(registerRedirect);
 }
 
 export async function forgotPasswordAction(formData: FormData) {

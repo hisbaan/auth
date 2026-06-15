@@ -12,6 +12,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/oklog/ulid/v2"
@@ -21,6 +22,7 @@ type CreateUserParams struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	ReturnTo string `json:"return_to"`
 }
 
 func (s *AuthService) CreateUser(ctx context.Context, params CreateUserParams) error {
@@ -33,6 +35,10 @@ func (s *AuthService) CreateUser(ctx context.Context, params CreateUserParams) e
 		return err
 	}
 	if err := stringutil.ValidatePassword(params.Password); err != nil {
+		return err
+	}
+	returnTo, err := s.validateEmailVerificationReturnTo(params.ReturnTo)
+	if err != nil {
 		return err
 	}
 
@@ -72,6 +78,7 @@ func (s *AuthService) CreateUser(ctx context.Context, params CreateUserParams) e
 		UserID:    user.ID,
 		TokenHash: hashedToken,
 		Email:     email,
+		ReturnTo:  returnTo,
 		ExpiresAt: time.Now().Add(time.Duration(24) * time.Hour),
 		RevokedAt: nil,
 		CreatedAt: time.Now(),
@@ -149,6 +156,27 @@ func (s *AuthService) Login(ctx context.Context, params LoginParams) (LoginRespo
 	}
 
 	return response, nil
+}
+
+func (s *AuthService) validateEmailVerificationReturnTo(value string) (*string, error) {
+	if value == "" {
+		return nil, nil
+	}
+
+	returnTo, err := url.Parse(value)
+	if err != nil || !returnTo.IsAbs() {
+		return nil, apperror.NewBadRequest("Invalid return_to")
+	}
+	issuer, err := url.Parse(s.issuer)
+	if err != nil || !issuer.IsAbs() {
+		return nil, apperror.NewInternalServerError("Invalid issuer")
+	}
+	if returnTo.Scheme != issuer.Scheme || returnTo.Host != issuer.Host || returnTo.Path != "/authorize" {
+		return nil, apperror.NewBadRequest("Invalid return_to")
+	}
+
+	cleaned := returnTo.String()
+	return &cleaned, nil
 }
 
 func (s *AuthService) Logout(ctx context.Context, token string) {
@@ -413,13 +441,17 @@ type VerifyEmailParams struct {
 	Token string `json:"token"`
 }
 
-func (s *AuthService) VerifyEmail(ctx context.Context, params VerifyEmailParams) error {
+type VerifyEmailResponse struct {
+	ContinueURL *string `json:"continue_url,omitempty"`
+}
+
+func (s *AuthService) VerifyEmail(ctx context.Context, params VerifyEmailParams) (VerifyEmailResponse, error) {
 	token, err := tokenutil.URLDecode(params.Token)
 	if err != nil {
 		events.Log(ctx, &s.eventRepo, events.AuthenticationVerifyEmailFailed, nil, events.AuthenticationVerifyEmailFailedData{
 			Reason: events.EventReasonInvalidToken,
 		})
-		return apperror.NewBadRequest("Invalid token")
+		return VerifyEmailResponse{}, apperror.NewBadRequest("Invalid token")
 	}
 
 	hashedToken := tokenutil.Hash(token)
@@ -431,7 +463,7 @@ func (s *AuthService) VerifyEmail(ctx context.Context, params VerifyEmailParams)
 				Reason: events.EventReasonInvalidToken,
 			})
 		}
-		return err
+		return VerifyEmailResponse{}, err
 	}
 
 	if verificationToken.RevokedAt != nil {
@@ -439,7 +471,7 @@ func (s *AuthService) VerifyEmail(ctx context.Context, params VerifyEmailParams)
 		events.Log(ctx, &s.eventRepo, events.AuthenticationVerifyEmailFailed, &userID, events.AuthenticationVerifyEmailFailedData{
 			Reason: events.EventReasonRevokedToken,
 		})
-		return apperror.NewBadRequest("Invalid token")
+		return VerifyEmailResponse{}, apperror.NewBadRequest("Invalid token")
 	}
 
 	if verificationToken.ExpiresAt.Before(time.Now()) {
@@ -447,19 +479,19 @@ func (s *AuthService) VerifyEmail(ctx context.Context, params VerifyEmailParams)
 		events.Log(ctx, &s.eventRepo, events.AuthenticationVerifyEmailFailed, &userID, events.AuthenticationVerifyEmailFailedData{
 			Reason: events.EventReasonExpiredToken,
 		})
-		return apperror.NewBadRequest("Invalid token")
+		return VerifyEmailResponse{}, apperror.NewBadRequest("Invalid token")
 	}
 
 	tokenID := ulidutil.MustFromBytes(verificationToken.ID)
 	if err := s.emailVerificationTokenRepo.Revoke(tokenID); err != nil {
-		return err
+		return VerifyEmailResponse{}, err
 	}
 
 	userID := ulidutil.MustFromBytes(verificationToken.UserID)
 	if err := s.userRepo.UpdateEmail(userID, verificationToken.Email, true); err != nil {
-		return err
+		return VerifyEmailResponse{}, err
 	}
 	events.Log(ctx, &s.eventRepo, events.UserEmailVerified, &userID, events.UserEmailVerifiedData{})
 
-	return nil
+	return VerifyEmailResponse{ContinueURL: verificationToken.ReturnTo}, nil
 }

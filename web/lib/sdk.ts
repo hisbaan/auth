@@ -13,6 +13,7 @@ import type {
 	LoginResponse,
 	UpdateUserResponse,
 	User,
+	VerifyEmailResponse,
 } from "@/lib/types";
 
 type SDKRequestOptions = {
@@ -110,10 +111,10 @@ export async function loginWithPassword(email: string, password: string) {
   });
 }
 
-export async function registerUser(username: string, email: string, password: string) {
+export async function registerUser(username: string, email: string, password: string, returnTo?: string) {
   return sdkRequest<void>("/auth/register", {
     method: "POST",
-    body: { username, email, password },
+    body: { username, email, password, return_to: returnTo },
   });
 }
 
@@ -132,7 +133,7 @@ export async function resetPassword(token: string, newPassword: string) {
 }
 
 export async function verifyEmail(token: string) {
-  return sdkRequest<void>("/auth/verify-email", {
+  return sdkRequest<VerifyEmailResponse>("/auth/verify-email", {
     method: "POST",
     body: { token },
   });

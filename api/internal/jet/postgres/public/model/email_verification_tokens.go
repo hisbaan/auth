@@ -19,4 +19,5 @@ type EmailVerificationTokens struct {
 	RevokedAt *time.Time
 	CreatedAt time.Time
 	Email     string
+	ReturnTo  *string
 }

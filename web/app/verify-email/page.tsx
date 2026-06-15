@@ -20,6 +20,8 @@ export default async function VerifyEmailPage({
   const token = params.token?.trim() ?? "";
   const result = token ? await verifyEmail(token) : null;
   const isVerified = result?.ok ?? false;
+  const continueUrl = result?.data?.continue_url;
+  const loginHref = continueUrl ? `/login?next=${encodeURIComponent(continueUrl)}` : "/login";
 
   return (
     <main className="mx-auto flex w-full max-w-6xl justify-center px-4 py-10 sm:px-6">
@@ -35,14 +37,16 @@ export default async function VerifyEmailPage({
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             {isVerified
-              ? "You can now sign in and continue using your account."
+              ? continueUrl
+                ? "You can now sign in and continue authorizing the application."
+                : "You can now sign in and continue using your account."
               : token
                 ? "This verification link is invalid, expired, or has already been used."
                 : "This verification link is missing a token. Please use the link from your email."}
           </p>
 
           <Button className="w-full" asChild>
-            <Link className="text-black!" href={isVerified ? "/login" : "/"}>
+            <Link className="text-black!" href={isVerified ? loginHref : "/"}>
               {isVerified ? "Sign in" : "Back home"}
             </Link>
           </Button>
