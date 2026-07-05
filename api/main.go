@@ -18,6 +18,7 @@ import (
 	internalMiddleware "auth/internal/middleware"
 	"auth/internal/migrations"
 	"auth/internal/oidc"
+	"auth/internal/repositories"
 	"auth/internal/roles"
 	"auth/internal/users"
 	"auth/internal/wellknown"
@@ -142,7 +143,10 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(internalMiddleware.SecurityHeaders())
-	r.Use(internalMiddleware.CORS(corsAllowedOrigins(cfg)))
+
+	clientRepo := repositories.NewClientRepository(db)
+	clientOrigins := internalMiddleware.NewOriginCache(clientRepo.GetActiveRedirectURIs, 5*time.Minute)
+	r.Use(internalMiddleware.CORS(corsAllowedOrigins(cfg), clientOrigins.IsAllowed))
 
 	authService := auth.NewAuthService(db, signingKey, cfg.JWTSigningKeyID, cfg.IssuerUrl, emailService, cfg.CookieDomain, splitCSV(cfg.BlockedEmailDomains))
 	r.Mount("/auth", auth.Router(authService))
@@ -150,7 +154,7 @@ func main() {
 	oidcService := oidc.NewOIDCService(db, signingKey, cfg.JWTSigningKeyID, cfg.IssuerUrl, cfg.FrontendURL, emailService, cfg.CookieDomain)
 	r.Mount("/", oidc.Router(oidcService, signingKey.Public().(ed25519.PublicKey), cfg.IssuerUrl))
 
-	usersService := users.NewUsersService(db, signingKey, cfg.IssuerUrl, emailService, splitCSV(cfg.BlockedEmailDomains))
+	usersService := users.NewUsersService(db, signingKey, cfg.IssuerUrl, emailService, splitCSV(cfg.BlockedEmailDomains), clientOrigins.Invalidate)
 	r.Mount("/users", users.Router(usersService))
 
 	rolesService := roles.NewRolesService(db)

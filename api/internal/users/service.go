@@ -23,7 +23,7 @@ type UsersService struct {
 	eventRepo                   repositories.EventRepository
 }
 
-func NewUsersService(db *sql.DB, jwtSigningKey ed25519.PrivateKey, issuer string, emailService *emails.EmailService, blockedEmailDomains []string) *UsersService {
+func NewUsersService(db *sql.DB, jwtSigningKey ed25519.PrivateKey, issuer string, emailService *emails.EmailService, blockedEmailDomains []string, onClientChange func()) *UsersService {
 	return &UsersService{
 		db:                          db,
 		jwtSigningKey:               jwtSigningKey,
@@ -31,7 +31,7 @@ func NewUsersService(db *sql.DB, jwtSigningKey ed25519.PrivateKey, issuer string
 		emailService:                emailService,
 		blockedEmailDomains:         blockedEmailDomains,
 		userRepo:                    repositories.NewUserRepository(db),
-		clientRepo:                  repositories.NewClientRepository(db),
+		clientRepo:                  repositories.NewClientRepositoryWithChangeHook(db, onClientChange),
 		userClientAuthorizationRepo: repositories.NewUserClientAuthorizationRepository(db),
 		roleRepo:                    repositories.NewRoleRepository(db),
 		refreshTokenRepo:            repositories.NewRefreshTokenRepository(db),

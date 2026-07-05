@@ -13,11 +13,22 @@ import (
 )
 
 type ClientRepository struct {
-	db *sql.DB
+	db       *sql.DB
+	onChange func()
 }
 
 func NewClientRepository(db *sql.DB) ClientRepository {
 	return ClientRepository{db: db}
+}
+
+func NewClientRepositoryWithChangeHook(db *sql.DB, onChange func()) ClientRepository {
+	return ClientRepository{db: db, onChange: onChange}
+}
+
+func (r *ClientRepository) notifyChange() {
+	if r.onChange != nil {
+		r.onChange()
+	}
 }
 
 func (r *ClientRepository) GetByID(id ulid.ULID) (*model.Clients, error) {
@@ -63,6 +74,25 @@ func (r *ClientRepository) GetByIDAndUserID(id ulid.ULID, userID ulid.ULID) (*mo
 	return &clients[0], nil
 }
 
+func (r *ClientRepository) GetActiveRedirectURIs() ([]string, error) {
+	query := Clients.SELECT(Clients.RedirectURI).
+		WHERE(Clients.RevokedAt.IS_NULL())
+
+	var clients []model.Clients
+	err := query.Query(r.db, &clients)
+	if err != nil {
+		log.Printf("[ERROR] GetActiveRedirectURIs client query failed: %v", err)
+		return nil, apperror.NewInternalServerError("Database query error")
+	}
+
+	uris := make([]string, 0, len(clients))
+	for _, client := range clients {
+		uris = append(uris, client.RedirectURI)
+	}
+
+	return uris, nil
+}
+
 func (r *ClientRepository) Create(client model.Clients) error {
 	now := time.Now()
 	if client.CreatedAt.IsZero() {
@@ -76,6 +106,7 @@ func (r *ClientRepository) Create(client model.Clients) error {
 		return apperror.FromPGError(err)
 	}
 
+	r.notifyChange()
 	return nil
 }
 
@@ -94,6 +125,7 @@ func (r *ClientRepository) Update(client model.Clients) error {
 		return apperror.FromPGError(err)
 	}
 
+	r.notifyChange()
 	return nil
 }
 
@@ -119,6 +151,7 @@ func (r *ClientRepository) Revoke(id ulid.ULID) error {
 		return apperror.NewNotFound("Client not found")
 	}
 
+	r.notifyChange()
 	return nil
 }
 
@@ -138,6 +171,7 @@ func (r *ClientRepository) Delete(id ulid.ULID) error {
 		return apperror.NewNotFound("Client not found")
 	}
 
+	r.notifyChange()
 	return nil
 }
 
