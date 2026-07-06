@@ -176,7 +176,7 @@ export async function authorizeConsentAction(formData: FormData) {
 	const result = await grantAuthorizeConsent(cookieStore.toString(), clientId, scope);
 	if (!result.ok) {
 		await setFlash("error", "Unable to grant consent");
-		redirect(withEncodedRequest("/authorize", request));
+		redirect(`${withEncodedRequest("/authorize", request)}&consent=required`);
 	}
 
 	redirect(`${API_BASE_URL}/authorize?${request}`);

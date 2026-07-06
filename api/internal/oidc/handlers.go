@@ -85,7 +85,10 @@ func (s *OIDCService) Authorize(params AuthorizeParams, userID ulid.ULID) (Autho
 		}
 
 		result.RedirectURI = strings.TrimRight(s.frontendURL, "/") + "/authorize"
-		result.Query = url.Values{"request": []string{params.RawQuery}}
+		result.Query = url.Values{
+			"request": []string{params.RawQuery},
+			"consent": []string{"required"},
+		}
 		return result, nil
 	}
 
