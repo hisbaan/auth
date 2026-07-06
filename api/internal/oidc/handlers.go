@@ -85,10 +85,7 @@ func (s *OIDCService) Authorize(params AuthorizeParams, userID ulid.ULID) (Autho
 		}
 
 		result.RedirectURI = strings.TrimRight(s.frontendURL, "/") + "/authorize"
-		result.Query = url.Values{
-			"request": []string{params.RawQuery},
-			"consent": []string{"required"},
-		}
+		result.Query = url.Values{"request": []string{params.RawQuery}}
 		return result, nil
 	}
 
@@ -113,6 +110,35 @@ func (s *OIDCService) Authorize(params AuthorizeParams, userID ulid.ULID) (Autho
 
 	result.Query.Set("code", tokenutil.URLEncode(code))
 	return result, nil
+}
+
+type AuthorizeSession struct {
+	UserID        ulid.ULID
+	RotatedTokens *sessiontokens.SessionTokens
+}
+
+func (s *OIDCService) ResolveAuthorizeSession(ctx context.Context, accessClaims *sessiontokens.AccessClaims, refreshToken string) (*AuthorizeSession, error) {
+	if accessClaims != nil {
+		if accessClaims.TokenSource != sessiontokens.TokenSourceSelf {
+			return nil, apperror.NewForbidden("Forbidden")
+		}
+		userID, err := ulidutil.FromPrefixed("user", accessClaims.Subject)
+		if err != nil {
+			return nil, apperror.NewUnauthorized("Invalid token")
+		}
+		return &AuthorizeSession{UserID: userID}, nil
+	}
+
+	if refreshToken == "" {
+		return nil, nil
+	}
+
+	tokens, err := s.sessionTokenService.RefreshSelfSession(ctx, refreshToken)
+	if err != nil {
+		return nil, nil
+	}
+
+	return &AuthorizeSession{UserID: tokens.UserID, RotatedTokens: &tokens}, nil
 }
 
 func (s *OIDCService) validateAuthorizeRequest(params AuthorizeParams) (*authorizeRequest, AuthorizeResult, error) {

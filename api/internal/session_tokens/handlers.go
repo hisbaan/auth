@@ -6,8 +6,10 @@ import (
 	"auth/internal/jet/postgres/public/model"
 	"auth/internal/utils"
 	"auth/internal/utils/httputil"
+	"auth/internal/utils/jwtutil"
 	"auth/internal/utils/ulidutil"
 	"context"
+	"crypto/ed25519"
 	"time"
 
 	"github.com/oklog/ulid/v2"
@@ -26,6 +28,7 @@ type SessionTokens struct {
 	RefreshToken   string
 	ExpiresIn      int
 	RefreshTokenID ulid.ULID
+	UserID         ulid.ULID
 }
 
 func (s *SessionTokenService) IssueSessionTokens(ctx context.Context, params IssueSessionTokensParams) (SessionTokens, error) {
@@ -110,7 +113,112 @@ func (s *SessionTokenService) IssueSessionTokens(ctx context.Context, params Iss
 		RefreshToken:   refreshToken,
 		ExpiresIn:      int(s.accessTokenExpiry.Seconds()),
 		RefreshTokenID: refreshTokenID,
+		UserID:         params.UserID,
 	}, nil
+}
+
+func (s *SessionTokenService) RefreshSelfSession(ctx context.Context, refreshToken string) (SessionTokens, error) {
+	publicKey := s.jwtSigningKey.Public().(ed25519.PublicKey)
+
+	_, claims, err := jwtutil.ValidateToken(publicKey, refreshToken, &RefreshClaims{})
+	if err != nil {
+		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, nil, events.AuthenticationRefreshFailedData{
+			Reason: events.EventReasonInvalidToken,
+		})
+		return SessionTokens{}, err
+	}
+
+	var userID *ulid.ULID
+	if parsedUserID, err := ulidutil.FromPrefixed("user", claims.Subject); err == nil {
+		userID = &parsedUserID
+	}
+
+	if claims.TokenType != "refresh" {
+		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, userID, events.AuthenticationRefreshFailedData{
+			Reason: events.EventReasonInvalidToken,
+		})
+		return SessionTokens{}, apperror.NewUnauthorized("Invalid token")
+	}
+	if claims.TokenSource != TokenSourceSelf {
+		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, userID, events.AuthenticationRefreshFailedData{
+			Reason: events.EventReasonInvalidToken,
+		})
+		return SessionTokens{}, apperror.NewUnauthorized("Invalid token")
+	}
+	if err := jwtutil.ValidateClaims(claims.RegisteredClaims, s.issuer); err != nil {
+		reason := events.EventReasonInvalidToken
+		if claims.ExpiresAt != nil && claims.ExpiresAt.Before(time.Now()) {
+			reason = events.EventReasonExpiredToken
+		}
+		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, userID, events.AuthenticationRefreshFailedData{
+			Reason: reason,
+		})
+		return SessionTokens{}, err
+	}
+
+	tokenID, err := ulidutil.FromPrefixed("token", claims.ID)
+	if err != nil {
+		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, userID, events.AuthenticationRefreshFailedData{
+			Reason: events.EventReasonInvalidToken,
+		})
+		return SessionTokens{}, apperror.NewUnauthorized("Invalid token")
+	}
+
+	refreshTokenModel, err := s.refreshTokenRepo.GetByID(tokenID)
+	if err != nil {
+		return SessionTokens{}, err
+	}
+
+	refreshTokenIDValue := ulidutil.ToPrefixed("token", tokenID)
+	if refreshTokenModel == nil {
+		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, userID, events.AuthenticationRefreshFailedData{
+			RefreshTokenID: refreshTokenIDValue,
+			Reason:         events.EventReasonUnknownRefreshToken,
+		})
+		return SessionTokens{}, apperror.NewUnauthorized("Invalid token")
+	}
+
+	refreshTokenUserID := ulidutil.MustFromBytes(refreshTokenModel.UserID)
+	if refreshTokenModel.RevokedAt != nil {
+		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, &refreshTokenUserID, events.AuthenticationRefreshFailedData{
+			RefreshTokenID: refreshTokenIDValue,
+			Reason:         events.EventReasonRevokedToken,
+		})
+		return SessionTokens{}, apperror.NewUnauthorized("Invalid token")
+	}
+
+	refreshTokenULID := ulidutil.MustFromBytes(refreshTokenModel.ID)
+	revoked, err := s.refreshTokenRepo.Revoke(refreshTokenULID)
+	if err != nil {
+		return SessionTokens{}, err
+	}
+	if !revoked {
+		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, &refreshTokenUserID, events.AuthenticationRefreshFailedData{
+			RefreshTokenID: refreshTokenIDValue,
+			Reason:         events.EventReasonRevokedToken,
+		})
+		return SessionTokens{}, apperror.NewUnauthorized("Invalid token")
+	}
+	events.Log(ctx, &s.eventRepo, events.RefreshTokenRevoked, &refreshTokenUserID, events.RefreshTokenRevokedData{
+		RefreshTokenID: refreshTokenIDValue,
+	})
+
+	tokens, err := s.IssueSessionTokens(ctx, IssueSessionTokensParams{
+		UserID:               refreshTokenUserID,
+		TokenSource:          TokenSourceSelf,
+		ClientID:             nil,
+		AuthorizationID:      nil,
+		ParentRefreshTokenID: &refreshTokenModel.ID,
+	})
+	if err != nil {
+		return SessionTokens{}, err
+	}
+	events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshTokenRotated, &refreshTokenUserID, events.AuthenticationRefreshTokenRotatedData{
+		OldRefreshTokenID: ulidutil.ToPrefixed("token", refreshTokenULID),
+		NewRefreshTokenID: ulidutil.ToPrefixed("token", tokens.RefreshTokenID),
+	})
+
+	return tokens, nil
 }
 
 func clientInfoFromContext(ctx context.Context) httputil.ClientInfo {

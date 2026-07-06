@@ -43,8 +43,26 @@ func Router(s *OIDCService, jwtAccessKey ed25519.PublicKey, issuer string) http.
 		}
 
 		promptValue, _ := parseAuthorizePrompt(params.Prompt)
-		claims, err := middleware.AccessClaimsFromRequest(r, jwtAccessKey, issuer)
+
+		var accessClaims *sessiontokens.AccessClaims
+		if claims, claimsErr := middleware.AccessClaimsFromRequest(r, jwtAccessKey, issuer); claimsErr == nil {
+			accessClaims = claims
+		}
+		var refreshToken string
+		if cookie, cookieErr := r.Cookie(RefreshTokenCookieName); cookieErr == nil {
+			refreshToken = cookie.Value
+		}
+
+		session, err := s.ResolveAuthorizeSession(r.Context(), accessClaims, refreshToken)
 		if err != nil {
+			httputil.HandleError(w, err)
+			return
+		}
+		if session != nil && session.RotatedTokens != nil {
+			setSelfAuthCookies(w, s.cookieDomain, *session.RotatedTokens)
+		}
+
+		if session == nil {
 			if promptValue == authorizePromptNone {
 				_, result, validateErr := s.validateAuthorizeRequest(params)
 				if validateErr != nil {
@@ -70,8 +88,9 @@ func Router(s *OIDCService, jwtAccessKey ed25519.PublicKey, issuer string) http.
 				return
 			}
 
-			redirectURL, err := httputil.WithQuery(strings.TrimRight(s.frontendURL, "/")+"/authorize", url.Values{
-				"request": []string{r.URL.RawQuery},
+			// No live session (access token invalid and refresh token unusable).
+			redirectURL, err := httputil.WithQuery(strings.TrimRight(s.frontendURL, "/")+"/login", url.Values{
+				"next": []string{strings.TrimRight(s.issuer, "/") + "/authorize?" + r.URL.RawQuery},
 			})
 			if err != nil {
 				httputil.HandleError(w, err)
@@ -81,18 +100,8 @@ func Router(s *OIDCService, jwtAccessKey ed25519.PublicKey, issuer string) http.
 			http.Redirect(w, r, redirectURL, http.StatusFound)
 			return
 		}
-		if claims.TokenSource != sessiontokens.TokenSourceSelf {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
 
-		userID, err := ulidutil.FromPrefixed("user", claims.Subject)
-		if err != nil {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
-			return
-		}
-
-		response, err := s.Authorize(params, userID)
+		response, err := s.Authorize(params, session.UserID)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
@@ -244,6 +253,31 @@ func Router(s *OIDCService, jwtAccessKey ed25519.PublicKey, issuer string) http.
 	})
 
 	return r
+}
+
+func setSelfAuthCookies(w http.ResponseWriter, cookieDomain string, tokens sessiontokens.SessionTokens) {
+	secure := cookieDomain != "localhost"
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     AccessTokenCookieName,
+		Value:    tokens.AccessToken,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		Domain:   cookieDomain,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Duration(tokens.ExpiresIn) * time.Second),
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     RefreshTokenCookieName,
+		Value:    tokens.RefreshToken,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		Domain:   cookieDomain,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Duration(168) * time.Hour),
+	})
 }
 
 func authorizeParamsFromRawQuery(rawQuery string) (AuthorizeParams, error) {

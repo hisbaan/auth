@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import { getAuthorizeClientInfo } from "@/lib/sdk";
 import { authorizeConsentAction } from "@/lib/actions";
 
 type AuthorizePageProps = {
-	searchParams: Promise<{ request?: string; consent?: string }>;
+	searchParams: Promise<{ request?: string }>;
 };
 
 export default async function AuthorizePage({ searchParams }: AuthorizePageProps) {
@@ -46,11 +45,6 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 	const { cookieHeader } = await withAuth({
 		loginRedirect: `/login?next=${encodeURIComponent(loginRedirect)}`,
 	});
-
-	// Don't render the consent screen in the case where the access token is expired.
-	if (params.consent !== "required") {
-		redirect(loginRedirect);
-	}
 
 	const clientId = authorizeParams.get("client_id") ?? "";
 	const scope = authorizeParams.get("scope") ?? "";
