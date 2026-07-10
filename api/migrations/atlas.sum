@@ -1,4 +1,4 @@
-h1:vDJUXFbkh7M8sV4uj6N1rVa3viH1Eet18sDkR6t89ps=
+h1:L/7PbVWsZfFSIQ8W0r/x5nMx2zsRiccLZhykN4IHJdw=
 20260202013949_add_users.sql h1:0dI3m7JqBwiuea7jS/QcoMakPM+HDj8vmaXF3iKvQKY=
 20260207180419_add_refresh_tokens.sql h1:XUC9xWpi11J0pGSBHQenF4WzKVo9FWNnIPorAH0WtJ4=
 20260215021359_refresh_token_on_delete_cascade.sql h1:dhBExhYeee1bGnu2zd/j5T2viRWeLnkbcYRuYcicuH8=
@@ -14,3 +14,4 @@ h1:vDJUXFbkh7M8sV4uj6N1rVa3viH1Eet18sDkR6t89ps=
 20260430120000_normalize_user_emails.sql h1:qaEKG57lLBYsXPB+2ptIzeFmFweVij8n2+RmlZPjT4k=
 20260507024052_email_reset_fix.sql h1:IXztupMbKR2A0dHheZW3scPzJ9ucOm1Ng+z1zz+3/o8=
 20260607120000_email_verification_return_to.sql h1:kuwAyQpKZiwriY4hA/TRCXHMySg+J4vh+UrOJiEBlFI=
+20260709221315_refresh_tokens_source_shape_check.sql h1:4kfDuW4uT8WOlwHAoRf5X3LdqDansne3rbp84xNX3is=

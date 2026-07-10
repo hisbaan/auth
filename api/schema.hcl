@@ -234,6 +234,9 @@ table "refresh_tokens" {
   index "idx_refresh_tokens_authorization" {
     columns = [column.authorization_id]
   }
+  check "chk_refresh_tokens_source_shape" {
+    expr = "(token_source = 'client' AND client_id IS NOT NULL AND authorization_id IS NOT NULL) OR (token_source = 'self' AND client_id IS NULL AND authorization_id IS NULL)"
+  }
 }
 
 table "password_reset_tokens" {
@@ -306,6 +309,11 @@ table "email_verification_tokens" {
   column "created_at" {
     type = timestamptz
     null = false
+  }
+
+  column "return_to" {
+    type = text
+    null = true
   }
 
   primary_key {
