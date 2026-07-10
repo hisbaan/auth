@@ -2,41 +2,35 @@ package middleware
 
 import (
 	"auth/internal/apperror"
-	sessiontokens "auth/internal/session_tokens"
+	"auth/internal/sessions"
+	"auth/internal/utils/httputil"
 	"auth/internal/utils/jwtutil"
 	"context"
 	"crypto/ed25519"
 	"net/http"
-	"strings"
 )
 
 const AuthContextKey = "jwtClaims"
 
-func AccessClaimsFromRequest(r *http.Request, publicKey ed25519.PublicKey, issuer string) (*sessiontokens.AccessClaims, error) {
+func AccessClaimsFromRequest(r *http.Request, publicKey ed25519.PublicKey, issuer string) (*sessions.AccessClaims, error) {
 	var token string
 
-	authHeader := r.Header.Get("Authorization")
-	if authHeader != "" {
-		token = strings.TrimPrefix(authHeader, "Bearer ")
-		if token == authHeader {
-			return nil, apperror.NewUnauthorized("Unauthorized")
+	if r.Header.Get("Authorization") != "" {
+		bearerToken, err := httputil.BearerToken(r)
+		if err != nil {
+			return nil, err
 		}
+		token = bearerToken
 	} else {
-		cookie, err := r.Cookie("access_token")
+		cookie, err := r.Cookie(sessions.AccessTokenCookieName)
 		if err != nil || cookie.Value == "" {
 			return nil, apperror.NewUnauthorized("Unauthorized")
 		}
 		token = cookie.Value
 	}
 
-	_, claims, err := jwtutil.ValidateToken(publicKey, token, &sessiontokens.AccessClaims{})
+	claims, err := jwtutil.ValidateToken(publicKey, issuer, jwtutil.SessionTokenJWTType, token, &sessions.AccessClaims{})
 	if err != nil {
-		return nil, apperror.NewUnauthorized("Unauthorized")
-	}
-	if err = jwtutil.ValidateClaims(claims.RegisteredClaims, issuer); err != nil {
-		return nil, apperror.NewUnauthorized("Unauthorized")
-	}
-	if claims.TokenType != "access" {
 		return nil, apperror.NewUnauthorized("Unauthorized")
 	}
 
@@ -46,11 +40,6 @@ func AccessClaimsFromRequest(r *http.Request, publicKey ed25519.PublicKey, issue
 func Auth(publicKey ed25519.PublicKey, issuer string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if authHeader := r.Header.Get("Authorization"); authHeader != "" && !strings.HasPrefix(authHeader, "Bearer ") {
-				http.Error(w, "Invalid authorization header", http.StatusUnauthorized)
-				return
-			}
-
 			claims, err := AccessClaimsFromRequest(r, publicKey, issuer)
 			if err != nil {
 				serr, ok := err.(apperror.HTTPError)
@@ -64,25 +53,6 @@ func Auth(publicKey ed25519.PublicKey, issuer string) func(next http.Handler) ht
 
 			ctx := context.WithValue(r.Context(), AuthContextKey, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
-func RequireTokenSource(source string) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			claims, ok := r.Context().Value(AuthContextKey).(*sessiontokens.AccessClaims)
-			if !ok {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
-
-			if claims.TokenSource != source {
-				http.Error(w, "Forbidden", http.StatusForbidden)
-				return
-			}
-
-			next.ServeHTTP(w, r)
 		})
 	}
 }

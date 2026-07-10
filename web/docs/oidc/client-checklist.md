@@ -14,6 +14,7 @@ Use this checklist when integrating a client application.
 - Do not configure a client secret.
 - Enable Authorization Code flow with PKCE.
 - Require `S256` PKCE challenges.
+- For browser-based clients, ensure your app origin matches a registered `redirect_uri`.
 
 ## Authorization Request
 
@@ -27,6 +28,7 @@ Use this checklist when integrating a client application.
 ## Callback Handling
 
 - Reject callbacks with a missing or mismatched `state`.
+- Verify the `iss` response parameter matches the configured issuer when your library supports RFC 9207.
 - Handle authorization errors returned to the redirect URI.
 - Exchange each authorization code only once.
 - Send the same `redirect_uri` used in the authorization request.
@@ -39,7 +41,9 @@ Use this checklist when integrating a client application.
 - Use ID token claims for client-side authentication and identity state, not API authorization.
 - Store refresh tokens securely.
 - Replace stored refresh tokens after every successful refresh.
-- Treat access tokens as bearer credentials and avoid depending on their internal format.
+- Send access tokens as bearer credentials to this issuer's APIs.
+- To protect your own API, validate access tokens per [Token Validation](./token-validation.md#access-token): require the `at+jwt` JOSE `typ`, then check `iss`, `aud`, `exp`, and `scope`.
+- Never accept an ID token where an access token is expected, or vice versa - the `typ` header check enforces this.
 
 ## UserInfo
 

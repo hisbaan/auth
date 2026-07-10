@@ -9,6 +9,9 @@
           "password": {
             "type": "string"
           },
+          "return_to": {
+            "type": "string"
+          },
           "username": {
             "type": "string"
           }
@@ -37,23 +40,6 @@
         },
         "type": "object"
       },
-      "auth.LoginResponse": {
-        "properties": {
-          "access_token": {
-            "type": "string"
-          },
-          "expires_in": {
-            "type": "integer"
-          },
-          "refresh_token": {
-            "type": "string"
-          },
-          "token_type": {
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
       "auth.PasswordResetParams": {
         "properties": {
           "new_password": {
@@ -73,7 +59,7 @@
         },
         "type": "object"
       },
-      "auth.RefreshResponse": {
+      "auth.SessionTokenResponse": {
         "properties": {
           "access_token": {
             "type": "string"
@@ -93,6 +79,14 @@
       "auth.VerifyEmailParams": {
         "properties": {
           "token": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "auth.VerifyEmailResponse": {
+        "properties": {
+          "continue_url": {
             "type": "string"
           }
         },
@@ -199,6 +193,77 @@
             "type": "array"
           },
           "next_cursor": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "oidc.AuthorizeClientInfoResponse": {
+        "properties": {
+          "allowed_scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "redirect_uri": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "oidc.AuthorizeConsentParams": {
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "oidc.TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "expires_in": {
+            "type": "integer"
+          },
+          "id_token": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "token_type": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "oidc.UserInfoResponse": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "email_verified": {
+            "type": "boolean"
+          },
+          "preferred_username": {
+            "type": "string"
+          },
+          "sub": {
             "type": "string"
           }
         },
@@ -448,6 +513,9 @@
         "properties": {
           "authorization_endpoint": {
             "type": "string"
+          },
+          "authorization_response_iss_parameter_supported": {
+            "type": "boolean"
           },
           "claims_supported": {
             "items": {
@@ -1127,7 +1195,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/auth.LoginResponse"
+                  "$ref": "#/components/schemas/auth.SessionTokenResponse"
                 }
               }
             },
@@ -1153,8 +1221,15 @@
       "post": {
         "description": "Clears authentication cookies",
         "responses": {
-          "204": {
-            "description": "No Content"
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/auth.VerifyEmailResponse"
+                }
+              }
+            },
+            "description": "OK"
           }
         },
         "summary": "Logout user",
@@ -1215,7 +1290,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/auth.RefreshResponse"
+                  "$ref": "#/components/schemas/auth.SessionTokenResponse"
                 }
               }
             },
@@ -1285,8 +1360,15 @@
           "x-originalParamName": "request"
         },
         "responses": {
-          "204": {
-            "description": "No Content"
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/auth.VerifyEmailResponse"
+                }
+              }
+            },
+            "description": "OK"
           },
           "400": {
             "description": "Bad Request"
@@ -1298,6 +1380,219 @@
         "summary": "Verify email",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/authorize": {
+      "get": {
+        "description": "Starts the Authorization Code + PKCE flow. Redirects to the client redirect URI with a code (or error), or to the hosted login/consent UI",
+        "parameters": [
+          {
+            "description": "Must be 'code'",
+            "in": "query",
+            "name": "response_type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Registered client ID",
+            "in": "query",
+            "name": "client_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Must exactly match the registered redirect URI",
+            "in": "query",
+            "name": "redirect_uri",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Space-separated scopes; must include 'openid'",
+            "in": "query",
+            "name": "scope",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque value returned unchanged on the redirect",
+            "in": "query",
+            "name": "state",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Bound into the ID token issued for this request",
+            "in": "query",
+            "name": "nonce",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "PKCE S256 code challenge",
+            "in": "query",
+            "name": "code_challenge",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Must be 'S256'",
+            "in": "query",
+            "name": "code_challenge_method",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "'none' or 'consent'",
+            "in": "query",
+            "name": "prompt",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Hint forwarded to the hosted login flow",
+            "in": "query",
+            "name": "login_hint",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "summary": "OIDC authorization endpoint",
+        "tags": [
+          "oidc"
+        ]
+      }
+    },
+    "/authorize/client-info": {
+      "get": {
+        "description": "Returns the display name, redirect URI, and allowed scopes of a client",
+        "parameters": [
+          {
+            "description": "Client ID",
+            "in": "query",
+            "name": "client_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/oidc.AuthorizeClientInfoResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get client info for the consent screen",
+        "tags": [
+          "oidc"
+        ]
+      }
+    },
+    "/authorize/consent": {
+      "post": {
+        "description": "Records the signed-in user's consent for the requested scopes",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/oidc.AuthorizeConsentParams"
+              }
+            }
+          },
+          "description": "Client and scopes to grant",
+          "required": true,
+          "x-originalParamName": "request"
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Grant consent to a client",
+        "tags": [
+          "oidc"
+        ]
+      }
+    },
+    "/authorize/deny": {
+      "get": {
+        "description": "Used by the hosted consent UI. Redirects to the client redirect URI with error=access_denied",
+        "parameters": [
+          {
+            "description": "URL-encoded original authorize query string",
+            "in": "query",
+            "name": "request",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "summary": "Deny an authorization request",
+        "tags": [
+          "oidc"
         ]
       }
     },
@@ -1319,6 +1614,175 @@
         "summary": "List roles",
         "tags": [
           "roles"
+        ]
+      }
+    },
+    "/token": {
+      "post": {
+        "description": "Exchanges an authorization code (grant_type=authorization_code) or refresh token (grant_type=refresh_token) for tokens",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "properties": {
+                  "client_id": {
+                    "description": "Registered client ID",
+                    "type": "string",
+                    "x-formData-name": "client_id"
+                  },
+                  "code": {
+                    "description": "Authorization code (authorization_code grant)",
+                    "type": "string",
+                    "x-formData-name": "code"
+                  },
+                  "code_verifier": {
+                    "description": "PKCE code verifier (authorization_code grant)",
+                    "type": "string",
+                    "x-formData-name": "code_verifier"
+                  },
+                  "grant_type": {
+                    "description": "'authorization_code' or 'refresh_token'",
+                    "type": "string",
+                    "x-formData-name": "grant_type"
+                  },
+                  "redirect_uri": {
+                    "description": "Redirect URI used in the authorization request (authorization_code grant)",
+                    "type": "string",
+                    "x-formData-name": "redirect_uri"
+                  },
+                  "refresh_token": {
+                    "description": "Refresh token (refresh_token grant)",
+                    "type": "string",
+                    "x-formData-name": "refresh_token"
+                  }
+                },
+                "required": [
+                  "client_id",
+                  "grant_type"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/oidc.TokenResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "OIDC token endpoint",
+        "tags": [
+          "oidc"
+        ]
+      }
+    },
+    "/token/revoke": {
+      "post": {
+        "description": "Revokes a client refresh token (RFC 7009). Unknown, expired, or non-client tokens are treated as successful no-ops",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "properties": {
+                  "token": {
+                    "description": "Refresh token to revoke",
+                    "type": "string",
+                    "x-formData-name": "token"
+                  },
+                  "token_type_hint": {
+                    "description": "Optional hint; only 'refresh_token' is meaningful",
+                    "type": "string",
+                    "x-formData-name": "token_type_hint"
+                  }
+                },
+                "required": [
+                  "token"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "summary": "Revoke a refresh token",
+        "tags": [
+          "oidc"
+        ]
+      }
+    },
+    "/userinfo": {
+      "get": {
+        "description": "Returns claims for the user the access token was issued for, filtered by granted scopes",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/oidc.UserInfoResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "OIDC userinfo endpoint",
+        "tags": [
+          "oidc"
+        ]
+      },
+      "post": {
+        "description": "Returns claims for the user the access token was issued for, filtered by granted scopes",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/oidc.UserInfoResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "OIDC userinfo endpoint",
+        "tags": [
+          "oidc"
         ]
       }
     },

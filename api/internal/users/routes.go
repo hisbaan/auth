@@ -2,7 +2,7 @@ package users
 
 import (
 	"auth/internal/middleware"
-	sessiontokens "auth/internal/session_tokens"
+	"auth/internal/sessions"
 	"auth/internal/utils/httputil"
 	"auth/internal/utils/ulidutil"
 	"crypto/ed25519"
@@ -15,7 +15,6 @@ import (
 func Router(s *UsersService) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Auth(s.jwtSigningKey.Public().(ed25519.PublicKey), s.issuer))
-	r.Use(middleware.RequireTokenSource(sessiontokens.TokenSourceSelf))
 
 	//	@Summary		Get current user
 	//	@Description	Returns the authenticated user's profile
@@ -25,7 +24,7 @@ func Router(s *UsersService) http.Handler {
 	//	@Failure		401
 	//	@Router			/users/me [get]
 	r.Get("/me", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessions.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -52,7 +51,7 @@ func Router(s *UsersService) http.Handler {
 	//	@Failure		409
 	//	@Router			/users/me [put]
 	r.Put("/me", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessions.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -83,7 +82,7 @@ func Router(s *UsersService) http.Handler {
 	//	@Failure		401
 	//	@Router			/users/me/password [post]
 	r.Post("/me/password", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessions.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -113,7 +112,7 @@ func Router(s *UsersService) http.Handler {
 	//	@Failure		401
 	//	@Router			/users/me [delete]
 	r.Delete("/me", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessions.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -142,7 +141,7 @@ func Router(s *UsersService) http.Handler {
 	//	@Failure		401
 	//	@Router			/users/me/clients [get]
 	r.Get("/me/clients", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessions.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -169,7 +168,7 @@ func Router(s *UsersService) http.Handler {
 	})
 
 	r.Get("/me/authorizations", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessions.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -186,7 +185,7 @@ func Router(s *UsersService) http.Handler {
 	})
 
 	r.Post("/me/authorizations/{clientId}/revoke", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessions.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -219,7 +218,7 @@ func Router(s *UsersService) http.Handler {
 	//	@Failure		409
 	//	@Router			/users/me/clients [post]
 	r.Post("/me/clients", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessions.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -254,7 +253,7 @@ func Router(s *UsersService) http.Handler {
 	//	@Failure		409
 	//	@Router			/users/me/clients/{clientId} [put]
 	r.Put("/me/clients/{clientId}", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessions.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -293,7 +292,7 @@ func Router(s *UsersService) http.Handler {
 	//	@Failure		409
 	//	@Router			/users/me/clients/{clientId}/revoke [post]
 	r.Post("/me/clients/{clientId}/revoke", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessions.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -326,7 +325,7 @@ func Router(s *UsersService) http.Handler {
 	//	@Failure		404
 	//	@Router			/users/me/clients/{clientId} [delete]
 	r.Delete("/me/clients/{clientId}", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessions.AccessClaims)
 		userID, err := ulidutil.FromPrefixed("user", ctx.Subject)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)

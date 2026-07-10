@@ -3,74 +3,13 @@ package auth
 import (
 	"auth/internal/apperror"
 	"auth/internal/middleware"
+	"auth/internal/sessions"
 	"auth/internal/utils/httputil"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 )
-
-const (
-	AccessTokenCookieName  = "access_token"
-	RefreshTokenCookieName = "refresh_token"
-)
-
-func (s *AuthService) setAuthCookies(w http.ResponseWriter, accessToken string, refreshToken string) {
-	httpOnly := true
-	sameSite := http.SameSiteLaxMode
-	secure := s.cookieDomain != "localhost"
-
-	accessCookie := http.Cookie{
-		Name:     AccessTokenCookieName,
-		Value:    accessToken,
-		HttpOnly: httpOnly,
-		Secure:   secure,
-		SameSite: sameSite,
-		Domain:   s.cookieDomain,
-		Path:     "/",
-		Expires:  time.Now().Add(time.Duration(15) * time.Minute),
-	}
-	http.SetCookie(w, &accessCookie)
-
-	refreshCookie := http.Cookie{
-		Name:     RefreshTokenCookieName,
-		Value:    refreshToken,
-		HttpOnly: httpOnly,
-		Secure:   secure,
-		SameSite: sameSite,
-		Domain:   s.cookieDomain,
-		Path:     "/",
-		Expires:  time.Now().Add(time.Duration(168) * time.Hour),
-	}
-	http.SetCookie(w, &refreshCookie)
-}
-
-func (s *AuthService) clearAuthCookies(w http.ResponseWriter) {
-	accessCookie := http.Cookie{
-		Name:     AccessTokenCookieName,
-		Value:    "",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-		Domain:   s.cookieDomain,
-		Path:     "/",
-		Expires:  time.Now().Add(-1 * time.Hour),
-	}
-	http.SetCookie(w, &accessCookie)
-
-	refreshCookie := http.Cookie{
-		Name:     RefreshTokenCookieName,
-		Value:    "",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-		Domain:   s.cookieDomain,
-		Path:     "/",
-		Expires:  time.Now().Add(-1 * time.Hour),
-	}
-	http.SetCookie(w, &refreshCookie)
-}
 
 func Router(s *AuthService) http.Handler {
 	r := chi.NewRouter()
@@ -104,7 +43,7 @@ func Router(s *AuthService) http.Handler {
 	//	@Tags			auth
 	//	@Accept			json
 	//	@Param			request	body		LoginParams	true	"Login credentials"
-	//	@Success		200		{object}	LoginResponse
+	//	@Success		200		{object}	SessionTokenResponse
 	//	@Failure		400
 	//	@Failure		401
 	//	@Failure		500
@@ -115,15 +54,14 @@ func Router(s *AuthService) http.Handler {
 			return
 		}
 
-		loginResponse, err := s.Login(r.Context(), body)
+		tokens, err := s.Login(r.Context(), body)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
 		}
 
-		s.setAuthCookies(w, loginResponse.AccessToken, loginResponse.RefreshToken)
-
-		httputil.JSONResponse(w, http.StatusOK, loginResponse)
+		sessions.SetCookies(w, s.cookieDomain, tokens)
+		httputil.JSONResponse(w, http.StatusOK, sessionTokenResponse(tokens))
 	})
 
 	//	@Summary		Refresh access token
@@ -131,7 +69,7 @@ func Router(s *AuthService) http.Handler {
 	//	@Tags			auth
 	//	@Accept			json
 	//	@Param			request	body		RefreshParams	true	"Refresh token"
-	//	@Success		200		{object}	RefreshResponse
+	//	@Success		200		{object}	SessionTokenResponse
 	//	@Failure		400
 	//	@Failure		401
 	//	@Router			/auth/refresh [post]
@@ -142,7 +80,7 @@ func Router(s *AuthService) http.Handler {
 		}
 
 		if body.RefreshToken == "" {
-			cookie, err := r.Cookie(RefreshTokenCookieName)
+			cookie, err := r.Cookie(sessions.RefreshTokenCookieName)
 			if err == nil && cookie != nil {
 				body.RefreshToken = cookie.Value
 			}
@@ -153,15 +91,14 @@ func Router(s *AuthService) http.Handler {
 			return
 		}
 
-		refreshResponse, err := s.Refresh(r.Context(), body)
+		tokens, err := s.Refresh(r.Context(), body)
 		if err != nil {
 			httputil.HandleError(w, err)
 			return
 		}
 
-		s.setAuthCookies(w, refreshResponse.AccessToken, refreshResponse.RefreshToken)
-
-		httputil.JSONResponse(w, http.StatusOK, refreshResponse)
+		sessions.SetCookies(w, s.cookieDomain, tokens)
+		httputil.JSONResponse(w, http.StatusOK, sessionTokenResponse(tokens))
 	})
 
 	//	@Summary		Logout user
@@ -171,20 +108,13 @@ func Router(s *AuthService) http.Handler {
 	//	@Router			/auth/logout [post]
 	r.Post("/logout", func(w http.ResponseWriter, r *http.Request) {
 		token := ""
-		authHeader := r.Header.Get("Authorization")
-		if authHeader != "" {
-			token = strings.TrimPrefix(authHeader, "Bearer ")
-			if token == authHeader {
-				token = ""
-			}
-		} else {
-			cookie, err := r.Cookie(AccessTokenCookieName)
-			if err == nil && cookie != nil {
-				token = cookie.Value
-			}
+		if bearerToken, err := httputil.BearerToken(r); err == nil {
+			token = bearerToken
+		} else if cookie, err := r.Cookie(sessions.AccessTokenCookieName); err == nil {
+			token = cookie.Value
 		}
 		s.Logout(r.Context(), token)
-		s.clearAuthCookies(w)
+		sessions.ClearCookies(w, s.cookieDomain)
 		w.WriteHeader(http.StatusNoContent)
 	})
 

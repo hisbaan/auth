@@ -1,6 +1,7 @@
-package sessiontokens
+package sessions
 
 import (
+	"auth/internal/utils/jwtutil"
 	"auth/internal/utils/ulidutil"
 	"crypto/ed25519"
 	"time"
@@ -14,44 +15,35 @@ const (
 	TokenSourceClient = "client"
 )
 
-type GenerateAccessTokenParams struct {
-	privateKey  ed25519.PrivateKey
-	keyID       string
-	issuer      string
-	userID      ulid.ULID
-	clientID    *ulid.ULID
-	tokenSource string
-	roles       []string
-	expiry      time.Duration
-}
-
+// AccessClaims is the first-party session access token (JOSE typ
+// "session+jwt"). It is an internal format carried in cookies or bearer
+// headers by this service's own frontend, never issued to OIDC clients.
 type AccessClaims struct {
-	TokenType   string   `json:"token_type"`
-	TokenSource string   `json:"token_source"`
-	ClientID    *string  `json:"client_id,omitempty"`
-	Roles       []string `json:"roles"`
+	Roles []string `json:"roles"`
 	jwt.RegisteredClaims
 }
 
+// RefreshClaims is the refresh token (JOSE typ "refresh+jwt"). Both
+// first-party sessions and OIDC client grants use it; token_source and
+// client_id say which.
 type RefreshClaims struct {
-	TokenType   string  `json:"token_type"`
 	TokenSource string  `json:"token_source"`
 	ClientID    *string `json:"client_id,omitempty"`
 	jwt.RegisteredClaims
 }
 
-func GenerateAccessToken(params GenerateAccessTokenParams) (string, error) {
-	var clientID *string
-	if params.clientID != nil {
-		value := ulidutil.ToPrefixed("client", *params.clientID)
-		clientID = &value
-	}
+type GenerateAccessTokenParams struct {
+	privateKey ed25519.PrivateKey
+	keyID      string
+	issuer     string
+	userID     ulid.ULID
+	roles      []string
+	expiry     time.Duration
+}
 
+func GenerateAccessToken(params GenerateAccessTokenParams) (string, error) {
 	claims := AccessClaims{
-		TokenType:   "access",
-		TokenSource: params.tokenSource,
-		ClientID:    clientID,
-		Roles:       params.roles,
+		Roles: params.roles,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   ulidutil.ToPrefixed("user", params.userID),
 			Issuer:    params.issuer,
@@ -62,6 +54,7 @@ func GenerateAccessToken(params GenerateAccessTokenParams) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
 	token.Header["kid"] = params.keyID
+	token.Header["typ"] = jwtutil.SessionTokenJWTType
 	return token.SignedString(params.privateKey)
 }
 
@@ -84,7 +77,6 @@ func GenerateRefreshToken(params GenerateRefreshTokenParams) (string, error) {
 	}
 
 	claims := RefreshClaims{
-		TokenType:   "refresh",
 		TokenSource: params.tokenSource,
 		ClientID:    clientID,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -98,5 +90,6 @@ func GenerateRefreshToken(params GenerateRefreshTokenParams) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
 	token.Header["kid"] = params.keyID
+	token.Header["typ"] = jwtutil.RefreshTokenJWTType
 	return token.SignedString(params.privateKey)
 }

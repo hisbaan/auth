@@ -4,7 +4,7 @@ import (
 	"auth/internal/apperror"
 	"auth/internal/events"
 	"auth/internal/jet/postgres/public/model"
-	sessiontokens "auth/internal/session_tokens"
+	"auth/internal/sessions"
 	"auth/internal/utils/jwtutil"
 	"auth/internal/utils/stringutil"
 	"auth/internal/utils/tokenutil"
@@ -100,29 +100,38 @@ type LoginParams struct {
 	TOTP     *int   `json:"totp,omitempty"`
 }
 
-type LoginResponse struct {
+type SessionTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	TokenType    string `json:"token_type"`
 	ExpiresIn    int    `json:"expires_in"`
 	RefreshToken string `json:"refresh_token"`
 }
 
-func (s *AuthService) Login(ctx context.Context, params LoginParams) (LoginResponse, error) {
+func sessionTokenResponse(tokens sessions.SessionTokens) SessionTokenResponse {
+	return SessionTokenResponse{
+		AccessToken:  tokens.AccessToken,
+		TokenType:    "Bearer",
+		ExpiresIn:    tokens.ExpiresIn,
+		RefreshToken: tokens.RefreshToken,
+	}
+}
+
+func (s *AuthService) Login(ctx context.Context, params LoginParams) (sessions.SessionTokens, error) {
 	email, err := stringutil.NormalizeEmail(params.Email)
 	if err != nil || params.Password == "" || len(params.Password) > stringutil.MaxPasswordLength {
-		return LoginResponse{}, apperror.NewUnauthorized("Invalid credentials")
+		return sessions.SessionTokens{}, apperror.NewUnauthorized("Invalid credentials")
 	}
 
 	user, err := s.userRepo.GetByEmail(email)
 	if err != nil {
-		return LoginResponse{}, err
+		return sessions.SessionTokens{}, err
 	}
 
 	if user == nil {
 		events.Log(ctx, &s.eventRepo, events.AuthenticationPasswordFailed, nil, events.AuthenticationPasswordFailedData{
 			Email: email,
 		})
-		return LoginResponse{}, apperror.NewUnauthorized("Invalid credentials")
+		return sessions.SessionTokens{}, apperror.NewUnauthorized("Invalid credentials")
 	}
 
 	match := ComparePasswordAndHash(params.Password, user.PasswordHash)
@@ -131,31 +140,18 @@ func (s *AuthService) Login(ctx context.Context, params LoginParams) (LoginRespo
 		events.Log(ctx, &s.eventRepo, events.AuthenticationPasswordFailed, &userID, events.AuthenticationPasswordFailedData{
 			Email: email,
 		})
-		return LoginResponse{}, apperror.NewUnauthorized("Invalid credentials")
+		return sessions.SessionTokens{}, apperror.NewUnauthorized("Invalid credentials")
 	}
 	if !user.EmailVerified {
-		return LoginResponse{}, apperror.NewForbidden("Email verification required")
+		return sessions.SessionTokens{}, apperror.NewForbidden("Email verification required")
 	}
 
 	userID := ulidutil.MustFromBytes(user.ID)
 	events.Log(ctx, &s.eventRepo, events.AuthenticationPasswordSucceeded, &userID, events.AuthenticationPasswordSucceededData{})
-	tokens, err := s.sessionTokenService.IssueSessionTokens(ctx, sessiontokens.IssueSessionTokensParams{
+	return s.sessionTokenService.IssueSessionTokens(ctx, sessions.IssueSessionTokensParams{
 		UserID:               userID,
-		TokenSource:          sessiontokens.TokenSourceSelf,
 		ParentRefreshTokenID: nil,
 	})
-	if err != nil {
-		return LoginResponse{}, err
-	}
-
-	response := LoginResponse{
-		AccessToken:  tokens.AccessToken,
-		TokenType:    "Bearer",
-		ExpiresIn:    tokens.ExpiresIn,
-		RefreshToken: tokens.RefreshToken,
-	}
-
-	return response, nil
 }
 
 func (s *AuthService) validateEmailVerificationReturnTo(value string) (*string, error) {
@@ -184,14 +180,8 @@ func (s *AuthService) Logout(ctx context.Context, token string) {
 		return
 	}
 
-	_, claims, err := jwtutil.ValidateToken(s.jwtSigningKey.Public().(ed25519.PublicKey), token, &sessiontokens.AccessClaims{})
+	claims, err := jwtutil.ValidateToken(s.jwtSigningKey.Public().(ed25519.PublicKey), s.issuer, jwtutil.SessionTokenJWTType, token, &sessions.AccessClaims{})
 	if err != nil {
-		return
-	}
-	if err := jwtutil.ValidateClaims(claims.RegisteredClaims, s.issuer); err != nil {
-		return
-	}
-	if claims.TokenType != "access" {
 		return
 	}
 
@@ -206,25 +196,8 @@ type RefreshParams struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-type RefreshResponse struct {
-	AccessToken  string `json:"access_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"`
-	RefreshToken string `json:"refresh_token"`
-}
-
-func (s *AuthService) Refresh(ctx context.Context, params RefreshParams) (RefreshResponse, error) {
-	tokens, err := s.sessionTokenService.RefreshSelfSession(ctx, params.RefreshToken)
-	if err != nil {
-		return RefreshResponse{}, err
-	}
-
-	return RefreshResponse{
-		AccessToken:  tokens.AccessToken,
-		TokenType:    "Bearer",
-		ExpiresIn:    tokens.ExpiresIn,
-		RefreshToken: tokens.RefreshToken,
-	}, nil
+func (s *AuthService) Refresh(ctx context.Context, params RefreshParams) (sessions.SessionTokens, error) {
+	return s.sessionTokenService.RefreshSelfSession(ctx, params.RefreshToken)
 }
 
 type ForgotPasswordParams struct {

@@ -2,7 +2,7 @@ package users
 
 import (
 	"auth/internal/middleware"
-	sessiontokens "auth/internal/session_tokens"
+	"auth/internal/sessions"
 	"auth/internal/utils/httputil"
 	"auth/internal/utils/ulidutil"
 	"net/http"
@@ -89,7 +89,7 @@ func Router(s *AdminUsersService) http.Handler {
 			return
 		}
 
-		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessions.AccessClaims)
 		err := s.AddUserRole(r.Context(), UpdateUserRoleParams{
 			UserID: chi.URLParam(r, "userId"),
 			Role:   body.Role,
@@ -113,7 +113,7 @@ func Router(s *AdminUsersService) http.Handler {
 	//	@Failure		403
 	//	@Router			/admin/users/{userId}/roles/{role} [delete]
 	r.Delete("/{userId}/roles/{role}", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context().Value(middleware.AuthContextKey).(*sessiontokens.AccessClaims)
+		ctx := r.Context().Value(middleware.AuthContextKey).(*sessions.AccessClaims)
 		err := s.RemoveUserRole(r.Context(), UpdateUserRoleParams{
 			UserID: chi.URLParam(r, "userId"),
 			Role:   chi.URLParam(r, "role"),

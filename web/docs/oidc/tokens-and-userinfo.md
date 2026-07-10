@@ -6,6 +6,12 @@ outline: deep
 
 The token endpoint accepts `application/x-www-form-urlencoded` requests. Clients are public clients and do not authenticate with a secret.
 
+## Browser-Based Clients
+
+The authorization code may be exchanged in the browser or on a server. The `/token`, `/token/revoke`, and `/userinfo` endpoints, along with discovery and JWKS, return CORS headers so browser clients can call them directly.
+
+A browser origin is allowed when it matches a registered `redirect_uri`, so no separate origin configuration is needed. Token and userinfo requests must not include credentials (`credentials: 'include'`); authenticate `/userinfo` with the bearer access token.
+
 ## Authorization Code Exchange
 
 ```http
@@ -33,11 +39,14 @@ Successful response:
   "token_type": "Bearer",
   "expires_in": 900,
   "refresh_token": "...",
+  "scope": "openid profile email",
   "id_token": "..."
 }
 ```
 
-The exact `expires_in` value is controlled by the server session-token configuration.
+The exact `expires_in` value is controlled by the server token configuration. `scope` lists the scopes the access token was issued with.
+
+The access token is a JWT following the RFC 9068 (`at+jwt`) profile. Its claims are documented in [Token Validation](./token-validation.md#access-token); your backend can validate it to authorize requests against your own API.
 
 ## Refresh Token Grant
 
@@ -58,6 +67,7 @@ Successful response:
   "token_type": "Bearer",
   "expires_in": 900,
   "refresh_token": "...",
+  "scope": "openid profile email",
   "id_token": "..."
 }
 ```
@@ -88,7 +98,7 @@ Successful response with all standard scopes granted:
 }
 ```
 
-Claims are scope-dependent:
+Claims are scope-dependent and follow the access token's `scope` claim:
 
 | Scope     | UserInfo fields           |
 | --------- | ------------------------- |

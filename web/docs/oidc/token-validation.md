@@ -4,7 +4,10 @@ outline: deep
 
 # Token Validation
 
-Clients should validate ID tokens before trusting their identity claims. Use access tokens as bearer credentials for `/userinfo` and API calls; do not use ID tokens to authorize API requests.
+Clients receive two validatable JWTs: an **ID token** that authenticates the user to your application, and an **access token** (RFC 9068 JWT) that authorizes API requests. Both are signed with the same issuer keys but carry different JOSE `typ` headers, so one can never be replayed as the other.
+
+- Validate the **ID token** to sign the user in and read identity claims.
+- Send the **access token** as a bearer credential to `/userinfo` - and, if your application has its own API, validate it there to authorize requests.
 
 ## JWKS
 
@@ -33,9 +36,9 @@ The key set contains Ed25519 public keys:
 
 Use the `kid` in the token header to select the key.
 
-## ID Token Claims
+## ID Token
 
-ID tokens are signed JWTs with these claims:
+ID tokens are signed JWTs with the JOSE header `typ: JWT` and these claims:
 
 | Claim                | Notes                                              |
 | -------------------- | -------------------------------------------------- |
@@ -49,7 +52,7 @@ ID tokens are signed JWTs with these claims:
 | `email`              | Present when `email` was granted                   |
 | `email_verified`     | Present when `email` was granted                   |
 
-## Validation Checklist
+### Validation checklist
 
 For every ID token:
 
@@ -61,10 +64,35 @@ For every ID token:
 6. If you sent `nonce`, require the returned `nonce` to match.
 7. Treat optional claims as absent unless their corresponding scopes were granted.
 
-## Access Tokens
+Use ID token claims for authentication and identity state. Do not accept ID tokens as API credentials: they have `typ: JWT`, not `typ: at+jwt`.
 
-Access tokens are bearer credentials for the auth service. Send them to `/userinfo` or other APIs that accept this issuer's access tokens.
+## Access Token
 
-Client applications should not parse access tokens or depend on their internal claims unless that token format is explicitly documented for your integration. Even when an access token looks like a JWT, treat its structure as an implementation detail unless the API contract says otherwise.
+Access tokens are JWTs that follow the [RFC 9068](https://www.rfc-editor.org/rfc/rfc9068) profile, with the JOSE header `typ: at+jwt` and these claims:
 
-ID tokens are the tokens clients validate and read for authentication and identity claims. Access tokens are the tokens clients present to APIs.
+| Claim       | Notes                                          |
+| ----------- | ---------------------------------------------- |
+| `iss`       | Must equal the issuer from discovery           |
+| `sub`       | Stable user ID, such as `user_...`             |
+| `aud`       | Your `client_id`                               |
+| `client_id` | The client the token was issued to             |
+| `scope`     | Space-separated scopes granted to the token    |
+| `jti`       | Unique token identifier                        |
+| `iat`       | Token issue time                               |
+| `exp`       | Token expiration time                          |
+
+These claims are a documented contract: your own backend may validate access tokens to authorize requests to your APIs, using the same JWKS keys.
+
+### Validation checklist
+
+For every access token your API accepts:
+
+1. Verify the JWT signature with the matching JWKS key.
+2. Require `alg` to be `EdDSA`.
+3. Require the JOSE header `typ` to be `at+jwt`. This is what stops an ID token - or any other JWT from this issuer - from being used as an access token.
+4. Require `iss` to match the configured issuer exactly.
+5. Require `aud` to contain your `client_id`.
+6. Require `exp` to be in the future.
+7. Authorize the request based on the `scope` claim.
+
+When calling this issuer's own APIs (such as `/userinfo`), you do not need to validate the access token yourself - send it as a bearer credential and the issuer validates it.

@@ -65,14 +65,15 @@ After successful authorization, the user is redirected to your registered `redir
 | --------- | ------------------------------------------------ |
 | `code`    | Authorization code for the token exchange        |
 | `state`   | Present if supplied in the authorization request |
+| `iss`     | The issuer identifier (RFC 9207)                 |
 
 Example:
 
 ```text
-https://app.example.com/callback?code=...&state=opaque-state
+https://app.example.com/callback?code=...&state=opaque-state&iss=https%3A%2F%2Fauth.example.com
 ```
 
-Verify that `state` matches the value your client generated before exchanging the code.
+Verify that `state` matches the value your client generated before exchanging the code. If your OIDC library supports RFC 9207, also verify that `iss` matches the configured issuer; it is included on every authorization response, including errors.
 
 Authorization codes expire after 15 minutes and can be used only once.
 

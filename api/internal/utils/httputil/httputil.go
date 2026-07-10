@@ -20,6 +20,17 @@ type ClientInfo struct {
 
 type clientInfoKey struct{}
 
+// extracts the token from the Authorization header.
+// errors if the header is absent or is not a non-empty Bearer credential.
+func BearerToken(r *http.Request) (string, error) {
+	header := r.Header.Get("Authorization")
+	token := strings.TrimPrefix(header, "Bearer ")
+	if header == "" || token == header || token == "" {
+		return "", apperror.NewUnauthorized("Unauthorized")
+	}
+	return token, nil
+}
+
 func ParseBody(w http.ResponseWriter, r *http.Request, body any) error {
 	LimitBody(w, r)
 

@@ -3,7 +3,7 @@ package oidc
 import (
 	"auth/internal/emails"
 	"auth/internal/repositories"
-	sessiontokens "auth/internal/session_tokens"
+	"auth/internal/sessions"
 	"crypto/ed25519"
 	"database/sql"
 	"time"
@@ -17,9 +17,9 @@ type OIDCService struct {
 	frontendURL         string
 	cookieDomain        string
 	accessTokenExpiry   time.Duration
-	refreshTokenExpiry  time.Duration
+	idTokenExpiry       time.Duration
 	emailService        *emails.EmailService
-	sessionTokenService sessiontokens.SessionTokenService
+	sessionTokenService sessions.SessionTokenService
 
 	userRepo                    repositories.UserRepository
 	clientRepo                  repositories.ClientRepository
@@ -32,7 +32,18 @@ type OIDCService struct {
 	eventRepo                   repositories.EventRepository
 }
 
-func NewOIDCService(db *sql.DB, signingKey ed25519.PrivateKey, signingKeyID string, issuer string, frontendURL string, emailService *emails.EmailService, cookieDomain string) *OIDCService {
+func NewOIDCService(
+	db *sql.DB,
+	signingKey ed25519.PrivateKey,
+	signingKeyID string,
+	issuer string,
+	frontendURL string,
+	emailService *emails.EmailService,
+	cookieDomain string,
+	sessionTokenService sessions.SessionTokenService,
+	accessTokenExpiry time.Duration,
+	idTokenExpiry time.Duration,
+) *OIDCService {
 	return &OIDCService{
 		db:                          db,
 		jwtSigningKey:               signingKey,
@@ -40,10 +51,10 @@ func NewOIDCService(db *sql.DB, signingKey ed25519.PrivateKey, signingKeyID stri
 		issuer:                      issuer,
 		frontendURL:                 frontendURL,
 		cookieDomain:                cookieDomain,
-		accessTokenExpiry:           time.Duration(15) * time.Minute,
-		refreshTokenExpiry:          time.Duration(168) * time.Hour,
+		accessTokenExpiry:           accessTokenExpiry,
+		idTokenExpiry:               idTokenExpiry,
 		emailService:                emailService,
-		sessionTokenService:         sessiontokens.NewSessionTokenService(signingKey, signingKeyID, issuer, time.Duration(15)*time.Minute, time.Duration(168)*time.Hour, repositories.NewRoleRepository(db), repositories.NewRefreshTokenRepository(db), repositories.NewEventRepository(db)),
+		sessionTokenService:         sessionTokenService,
 		userRepo:                    repositories.NewUserRepository(db),
 		clientRepo:                  repositories.NewClientRepository(db),
 		authorizationCodeRepo:       repositories.NewAuthorizationCodeRepository(db),

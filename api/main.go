@@ -20,6 +20,7 @@ import (
 	"auth/internal/oidc"
 	"auth/internal/repositories"
 	"auth/internal/roles"
+	"auth/internal/sessions"
 	"auth/internal/users"
 	"auth/internal/wellknown"
 
@@ -148,11 +149,27 @@ func main() {
 	clientOrigins := internalMiddleware.NewOriginCache(clientRepo.GetActiveRedirectURIs, 5*time.Minute)
 	r.Use(internalMiddleware.CORS(corsAllowedOrigins(cfg), clientOrigins.IsAllowed))
 
-	authService := auth.NewAuthService(db, signingKey, cfg.JWTSigningKeyID, cfg.IssuerUrl, emailService, cfg.CookieDomain, splitCSV(cfg.BlockedEmailDomains))
+	// Token lifetimes live here and nowhere else.
+	const accessTokenExpiry = 15 * time.Minute
+	const refreshTokenExpiry = 168 * time.Hour // 7 days
+	const idTokenExpiry = 15 * time.Minute
+
+	sessionTokenService := sessions.NewSessionTokenService(
+		signingKey,
+		cfg.JWTSigningKeyID,
+		cfg.IssuerUrl,
+		accessTokenExpiry,
+		refreshTokenExpiry,
+		repositories.NewRoleRepository(db),
+		repositories.NewRefreshTokenRepository(db),
+		repositories.NewEventRepository(db),
+	)
+
+	authService := auth.NewAuthService(db, signingKey, cfg.JWTSigningKeyID, cfg.IssuerUrl, emailService, cfg.CookieDomain, splitCSV(cfg.BlockedEmailDomains), sessionTokenService)
 	r.Mount("/auth", auth.Router(authService))
 
-	oidcService := oidc.NewOIDCService(db, signingKey, cfg.JWTSigningKeyID, cfg.IssuerUrl, cfg.FrontendURL, emailService, cfg.CookieDomain)
-	r.Mount("/", oidc.Router(oidcService, signingKey.Public().(ed25519.PublicKey), cfg.IssuerUrl))
+	oidcService := oidc.NewOIDCService(db, signingKey, cfg.JWTSigningKeyID, cfg.IssuerUrl, cfg.FrontendURL, emailService, cfg.CookieDomain, sessionTokenService, accessTokenExpiry, idTokenExpiry)
+	r.Mount("/", oidc.Router(oidcService))
 
 	usersService := users.NewUsersService(db, signingKey, cfg.IssuerUrl, emailService, splitCSV(cfg.BlockedEmailDomains), clientOrigins.Invalidate)
 	r.Mount("/users", users.Router(usersService))

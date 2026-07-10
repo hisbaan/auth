@@ -11,7 +11,7 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-type GenerateOIDCTokenParams struct {
+type GenerateIDTokenParams struct {
 	privateKey ed25519.PrivateKey
 	keyID      string
 	issuer     string
@@ -23,7 +23,7 @@ type GenerateOIDCTokenParams struct {
 	expiry     time.Duration
 }
 
-type OIDCClaims struct {
+type IDTokenClaims struct {
 	Nonce             *string `json:"nonce,omitempty"`
 	Email             *string `json:"email,omitempty"`
 	EmailVerified     *bool   `json:"email_verified,omitempty"`
@@ -31,8 +31,8 @@ type OIDCClaims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateOIDCToken(params GenerateOIDCTokenParams) (string, error) {
-	claims := OIDCClaims{
+func GenerateIDToken(params GenerateIDTokenParams) (string, error) {
+	claims := IDTokenClaims{
 		Nonce: params.nonce,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   ulidutil.ToPrefixed("user", params.userID),

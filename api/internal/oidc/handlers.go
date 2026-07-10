@@ -4,7 +4,7 @@ import (
 	"auth/internal/apperror"
 	"auth/internal/events"
 	"auth/internal/jet/postgres/public/model"
-	sessiontokens "auth/internal/session_tokens"
+	"auth/internal/sessions"
 	"auth/internal/utils/jwtutil"
 	"auth/internal/utils/tokenutil"
 	"auth/internal/utils/ulidutil"
@@ -114,14 +114,11 @@ func (s *OIDCService) Authorize(params AuthorizeParams, userID ulid.ULID) (Autho
 
 type AuthorizeSession struct {
 	UserID        ulid.ULID
-	RotatedTokens *sessiontokens.SessionTokens
+	RotatedTokens *sessions.SessionTokens
 }
 
-func (s *OIDCService) ResolveAuthorizeSession(ctx context.Context, accessClaims *sessiontokens.AccessClaims, refreshToken string) (*AuthorizeSession, error) {
+func (s *OIDCService) ResolveAuthorizeSession(ctx context.Context, accessClaims *sessions.AccessClaims, refreshToken string) (*AuthorizeSession, error) {
 	if accessClaims != nil {
-		if accessClaims.TokenSource != sessiontokens.TokenSourceSelf {
-			return nil, apperror.NewForbidden("Forbidden")
-		}
 		userID, err := ulidutil.FromPrefixed("user", accessClaims.Subject)
 		if err != nil {
 			return nil, apperror.NewUnauthorized("Invalid token")
@@ -159,6 +156,7 @@ func (s *OIDCService) validateAuthorizeRequest(params AuthorizeParams) (*authori
 	}
 
 	result := AuthorizeResult{RedirectURI: client.RedirectURI, Query: url.Values{}}
+	result.Query.Set("iss", s.issuer)
 	if params.State != "" {
 		result.Query.Set("state", params.State)
 	}
@@ -238,6 +236,7 @@ type TokenResponse struct {
 	TokenType    string `json:"token_type"`
 	ExpiresIn    int    `json:"expires_in"`
 	RefreshToken string `json:"refresh_token"`
+	Scope        string `json:"scope"`
 	IDToken      string `json:"id_token"`
 }
 
@@ -312,9 +311,9 @@ func (s *OIDCService) TokenAuthorizationCode(ctx context.Context, params TokenAu
 		return TokenResponse{}, NewInvalidGrantTokenError("Invalid authorization")
 	}
 	authorizationID := ulidutil.MustFromBytes(userClientAuthorization.ID)
-	sessionTokens, err := s.sessionTokenService.IssueSessionTokens(ctx, sessiontokens.IssueSessionTokensParams{
+	refreshToken, err := s.sessionTokenService.IssueRefreshToken(ctx, sessions.IssueRefreshTokenParams{
 		UserID:               userID,
-		TokenSource:          sessiontokens.TokenSourceClient,
+		TokenSource:          sessions.TokenSourceClient,
 		ClientID:             &clientID,
 		AuthorizationID:      &authorizationID,
 		ParentRefreshTokenID: nil,
@@ -323,7 +322,21 @@ func (s *OIDCService) TokenAuthorizationCode(ctx context.Context, params TokenAu
 		return TokenResponse{}, err
 	}
 
-	idToken, err := GenerateOIDCToken(GenerateOIDCTokenParams{
+	accessToken, err := GenerateAccessToken(GenerateAccessTokenParams{
+		privateKey: s.jwtSigningKey,
+		keyID:      s.jwtSigningKeyID,
+		issuer:     s.issuer,
+		userID:     userID,
+		clientID:   clientID,
+		scopes:     authorizationCode.Scopes,
+		expiry:     s.accessTokenExpiry,
+	})
+	if err != nil {
+		return TokenResponse{}, err
+	}
+	events.Log(ctx, &s.eventRepo, events.AccessTokenCreated, &userID, events.AccessTokenCreatedData{})
+
+	idToken, err := GenerateIDToken(GenerateIDTokenParams{
 		privateKey: s.jwtSigningKey,
 		keyID:      s.jwtSigningKeyID,
 		issuer:     s.issuer,
@@ -332,7 +345,7 @@ func (s *OIDCService) TokenAuthorizationCode(ctx context.Context, params TokenAu
 		user:       user,
 		scopes:     authorizationCode.Scopes,
 		nonce:      authorizationCode.Nonce,
-		expiry:     time.Duration(15) * time.Minute,
+		expiry:     s.idTokenExpiry,
 	})
 	if err != nil {
 		return TokenResponse{}, err
@@ -342,10 +355,11 @@ func (s *OIDCService) TokenAuthorizationCode(ctx context.Context, params TokenAu
 	}
 
 	return TokenResponse{
-		AccessToken:  sessionTokens.AccessToken,
+		AccessToken:  accessToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    sessionTokens.ExpiresIn,
-		RefreshToken: sessionTokens.RefreshToken,
+		ExpiresIn:    int(s.accessTokenExpiry.Seconds()),
+		RefreshToken: refreshToken.RefreshToken,
+		Scope:        strings.Join(authorizationCode.Scopes, " "),
 		IDToken:      idToken,
 	}, nil
 }
@@ -369,21 +383,15 @@ func (s *OIDCService) TokenRefreshToken(ctx context.Context, params TokenRefresh
 		return TokenResponse{}, NewInvalidRequestTokenError("Invalid client_id")
 	}
 
-	_, claims, err := jwtutil.ValidateToken(s.jwtSigningKey.Public().(ed25519.PublicKey), params.RefreshToken, &sessiontokens.RefreshClaims{})
+	claims, err := jwtutil.ValidateToken(s.jwtSigningKey.Public().(ed25519.PublicKey), s.issuer, jwtutil.RefreshTokenJWTType, params.RefreshToken, &sessions.RefreshClaims{})
 	if err != nil {
 		return TokenResponse{}, NewInvalidGrantTokenError("Invalid token")
 	}
-	if claims.TokenType != "refresh" {
-		return TokenResponse{}, NewInvalidGrantTokenError("Invalid token")
-	}
-	if claims.TokenSource != sessiontokens.TokenSourceClient {
+	if claims.TokenSource != sessions.TokenSourceClient {
 		return TokenResponse{}, NewInvalidGrantTokenError("Invalid token")
 	}
 	if claims.ClientID == nil || *claims.ClientID != params.ClientID {
 		return TokenResponse{}, NewInvalidClientTokenError("Invalid client")
-	}
-	if err := jwtutil.ValidateClaims(claims.RegisteredClaims, s.issuer); err != nil {
-		return TokenResponse{}, NewInvalidGrantTokenError("Invalid token")
 	}
 
 	tokenID, err := ulidutil.FromPrefixed("token", claims.ID)
@@ -398,7 +406,7 @@ func (s *OIDCService) TokenRefreshToken(ctx context.Context, params TokenRefresh
 	if refreshToken == nil || refreshToken.RevokedAt != nil {
 		return TokenResponse{}, NewInvalidGrantTokenError("Invalid token")
 	}
-	if refreshToken.TokenSource != sessiontokens.TokenSourceClient || refreshToken.ClientID == nil || refreshToken.AuthorizationID == nil {
+	if refreshToken.TokenSource != sessions.TokenSourceClient || refreshToken.ClientID == nil || refreshToken.AuthorizationID == nil {
 		return TokenResponse{}, NewInvalidGrantTokenError("Invalid token")
 	}
 	if ulidutil.MustFromBytes(*refreshToken.ClientID) != clientID {
@@ -438,9 +446,9 @@ func (s *OIDCService) TokenRefreshToken(ctx context.Context, params TokenRefresh
 		RefreshTokenID: refreshTokenIDValue,
 	})
 
-	sessionTokens, err := s.sessionTokenService.IssueSessionTokens(ctx, sessiontokens.IssueSessionTokensParams{
+	newRefreshToken, err := s.sessionTokenService.IssueRefreshToken(ctx, sessions.IssueRefreshTokenParams{
 		UserID:               refreshTokenUserID,
-		TokenSource:          sessiontokens.TokenSourceClient,
+		TokenSource:          sessions.TokenSourceClient,
 		ClientID:             ulidutil.MustPtrFromBytes(refreshToken.ClientID),
 		AuthorizationID:      ulidutil.MustPtrFromBytes(refreshToken.AuthorizationID),
 		ParentRefreshTokenID: &refreshToken.ID,
@@ -448,7 +456,22 @@ func (s *OIDCService) TokenRefreshToken(ctx context.Context, params TokenRefresh
 	if err != nil {
 		return TokenResponse{}, err
 	}
-	idToken, err := GenerateOIDCToken(GenerateOIDCTokenParams{
+
+	accessToken, err := GenerateAccessToken(GenerateAccessTokenParams{
+		privateKey: s.jwtSigningKey,
+		keyID:      s.jwtSigningKeyID,
+		issuer:     s.issuer,
+		userID:     refreshTokenUserID,
+		clientID:   clientID,
+		scopes:     userClientAuthorization.GrantedScopes,
+		expiry:     s.accessTokenExpiry,
+	})
+	if err != nil {
+		return TokenResponse{}, err
+	}
+	events.Log(ctx, &s.eventRepo, events.AccessTokenCreated, &refreshTokenUserID, events.AccessTokenCreatedData{})
+
+	idToken, err := GenerateIDToken(GenerateIDTokenParams{
 		privateKey: s.jwtSigningKey,
 		keyID:      s.jwtSigningKeyID,
 		issuer:     s.issuer,
@@ -457,17 +480,18 @@ func (s *OIDCService) TokenRefreshToken(ctx context.Context, params TokenRefresh
 		user:       user,
 		scopes:     userClientAuthorization.GrantedScopes,
 		nonce:      nil,
-		expiry:     time.Duration(15) * time.Minute,
+		expiry:     s.idTokenExpiry,
 	})
 	if err != nil {
 		return TokenResponse{}, err
 	}
 
 	return TokenResponse{
-		AccessToken:  sessionTokens.AccessToken,
+		AccessToken:  accessToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    sessionTokens.ExpiresIn,
-		RefreshToken: sessionTokens.RefreshToken,
+		ExpiresIn:    int(s.accessTokenExpiry.Seconds()),
+		RefreshToken: newRefreshToken.RefreshToken,
+		Scope:        strings.Join(userClientAuthorization.GrantedScopes, " "),
 		IDToken:      idToken,
 	}, nil
 }
@@ -560,14 +584,11 @@ func (s *OIDCService) RevokeToken(ctx context.Context, params RevokeTokenParams)
 		return apperror.NewBadRequest("Token is required")
 	}
 
-	_, claims, err := jwtutil.ValidateToken(s.jwtSigningKey.Public().(ed25519.PublicKey), params.Token, &sessiontokens.RefreshClaims{})
+	claims, err := jwtutil.ValidateToken(s.jwtSigningKey.Public().(ed25519.PublicKey), s.issuer, jwtutil.RefreshTokenJWTType, params.Token, &sessions.RefreshClaims{})
 	if err != nil {
 		return nil
 	}
-	if claims.TokenType != "refresh" {
-		return nil
-	}
-	if err := jwtutil.ValidateClaims(claims.RegisteredClaims, s.issuer); err != nil {
+	if claims.TokenSource != sessions.TokenSourceClient {
 		return nil
 	}
 
@@ -596,10 +617,6 @@ func (s *OIDCService) RevokeToken(ctx context.Context, params RevokeTokenParams)
 	return nil
 }
 
-type UserInfoParams struct {
-	Claims *sessiontokens.AccessClaims
-}
-
 type UserInfoResponse struct {
 	Subject           string  `json:"sub"`
 	PreferredUsername *string `json:"preferred_username,omitempty"`
@@ -607,23 +624,19 @@ type UserInfoResponse struct {
 	EmailVerified     *bool   `json:"email_verified,omitempty"`
 }
 
-func (s *OIDCService) UserInfo(params UserInfoParams) (UserInfoResponse, error) {
-	if params.Claims == nil {
-		return UserInfoResponse{}, apperror.NewUnauthorized("Invalid token")
-	}
-	if params.Claims.TokenSource != sessiontokens.TokenSourceClient || params.Claims.ClientID == nil {
-		return UserInfoResponse{}, apperror.NewUnauthorized("Invalid token")
+type userInfoIdentity struct {
+	userID   ulid.ULID
+	clientID ulid.ULID
+	scopes   []string
+}
+
+func (s *OIDCService) UserInfo(bearerToken string) (UserInfoResponse, error) {
+	identity, err := s.resolveUserInfoToken(bearerToken)
+	if err != nil {
+		return UserInfoResponse{}, err
 	}
 
-	userID, err := ulidutil.FromPrefixed("user", params.Claims.Subject)
-	if err != nil {
-		return UserInfoResponse{}, apperror.NewUnauthorized("Invalid token")
-	}
-	clientID, err := ulidutil.FromPrefixed("client", *params.Claims.ClientID)
-	if err != nil {
-		return UserInfoResponse{}, apperror.NewUnauthorized("Invalid token")
-	}
-	client, err := s.clientRepo.GetByID(clientID)
+	client, err := s.clientRepo.GetByID(identity.clientID)
 	if err != nil {
 		return UserInfoResponse{}, err
 	}
@@ -631,7 +644,7 @@ func (s *OIDCService) UserInfo(params UserInfoParams) (UserInfoResponse, error) 
 		return UserInfoResponse{}, apperror.NewUnauthorized("Invalid token")
 	}
 
-	authorization, err := s.userClientAuthorizationRepo.GetByUserIDAndClientID(userID, clientID)
+	authorization, err := s.userClientAuthorizationRepo.GetByUserIDAndClientID(identity.userID, identity.clientID)
 	if err != nil {
 		return UserInfoResponse{}, err
 	}
@@ -639,7 +652,7 @@ func (s *OIDCService) UserInfo(params UserInfoParams) (UserInfoResponse, error) 
 		return UserInfoResponse{}, apperror.NewUnauthorized("Invalid token")
 	}
 
-	user, err := s.userRepo.GetByID(userID)
+	user, err := s.userRepo.GetByID(identity.userID)
 	if err != nil {
 		return UserInfoResponse{}, err
 	}
@@ -647,18 +660,44 @@ func (s *OIDCService) UserInfo(params UserInfoParams) (UserInfoResponse, error) 
 		return UserInfoResponse{}, apperror.NewUnauthorized("Invalid token")
 	}
 
-	response := UserInfoResponse{
-		Subject: params.Claims.Subject,
+	// A scope is honored only if the token was issued with it and the
+	// authorization still grants it.
+	hasScope := func(scope string) bool {
+		return slices.Contains(identity.scopes, scope) && slices.Contains(authorization.GrantedScopes, scope)
 	}
-	if slices.Contains(authorization.GrantedScopes, "profile") {
+
+	response := UserInfoResponse{
+		Subject: ulidutil.ToPrefixed("user", identity.userID),
+	}
+	if hasScope("profile") {
 		response.PreferredUsername = &user.Username
 	}
-	if slices.Contains(authorization.GrantedScopes, "email") {
+	if hasScope("email") {
 		response.Email = &user.Email
 		response.EmailVerified = &user.EmailVerified
 	}
 
 	return response, nil
+}
+
+func (s *OIDCService) resolveUserInfoToken(bearerToken string) (userInfoIdentity, error) {
+	publicKey := s.jwtSigningKey.Public().(ed25519.PublicKey)
+
+	claims, err := ValidateAccessToken(publicKey, s.issuer, bearerToken)
+	if err != nil {
+		return userInfoIdentity{}, apperror.NewUnauthorized("Invalid token")
+	}
+
+	userID, err := ulidutil.FromPrefixed("user", claims.Subject)
+	if err != nil {
+		return userInfoIdentity{}, apperror.NewUnauthorized("Invalid token")
+	}
+	clientID, err := ulidutil.FromPrefixed("client", claims.ClientID)
+	if err != nil {
+		return userInfoIdentity{}, apperror.NewUnauthorized("Invalid token")
+	}
+
+	return userInfoIdentity{userID: userID, clientID: clientID, scopes: claims.Scopes()}, nil
 }
 
 func (s *OIDCService) requireActiveClient(clientID ulid.ULID) (*model.Clients, error) {

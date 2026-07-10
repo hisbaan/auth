@@ -3,7 +3,7 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-.PHONY: jet db-generate db-migrate db-status db-hash db-inspect db-validate build run dev clean swagger
+.PHONY: jet db-generate db-migrate db-status db-hash db-inspect db-validate build run dev clean openapi
 
 # Generate go-jet SQL builder code from database
 jet:

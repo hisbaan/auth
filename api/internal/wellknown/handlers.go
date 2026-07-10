@@ -25,20 +25,21 @@ func (s *WellKnownService) GetJWKSHandler(w http.ResponseWriter, r *http.Request
 
 func (s *WellKnownService) GetOpenIDConfigurationHandler(w http.ResponseWriter, r *http.Request) {
 	openIDConfiguration := OpenIDConfiguration{
-		Issuer:                            s.baseURL,
-		AuthorizationEndpoint:             joinURLPath(s.baseURL, "authorize"),
-		TokenEndpoint:                     joinURLPath(s.baseURL, "token"),
-		RevocationEndpoint:                joinURLPath(s.baseURL, "token/revoke"),
-		UserinfoEndpoint:                  joinURLPath(s.baseURL, "userinfo"),
-		JWKSURI:                           joinURLPath(s.baseURL, ".well-known/jwks.json"),
-		ResponseTypesSupported:            []string{"code"},
-		SubjectTypesSupported:             []string{"public"},
-		IDTokenSigningAlgValuesSupported:  []string{"EdDSA"},
-		ScopesSupported:                   []string{"openid", "profile", "email"},
-		TokenEndpointAuthMethodsSupported: []string{"none"},
-		CodeChallengeMethodsSupported:     []string{"S256"},
-		GrantTypesSupported:               []string{"authorization_code", "refresh_token"},
-		ClaimsSupported:                   []string{"sub", "preferred_username", "email", "email_verified"},
+		Issuer:                                     s.baseURL,
+		AuthorizationEndpoint:                      joinURLPath(s.baseURL, "authorize"),
+		TokenEndpoint:                              joinURLPath(s.baseURL, "token"),
+		RevocationEndpoint:                         joinURLPath(s.baseURL, "token/revoke"),
+		UserinfoEndpoint:                           joinURLPath(s.baseURL, "userinfo"),
+		JWKSURI:                                    joinURLPath(s.baseURL, ".well-known/jwks.json"),
+		ResponseTypesSupported:                     []string{"code"},
+		SubjectTypesSupported:                      []string{"public"},
+		IDTokenSigningAlgValuesSupported:           []string{"EdDSA"},
+		ScopesSupported:                            []string{"openid", "profile", "email"},
+		TokenEndpointAuthMethodsSupported:          []string{"none"},
+		CodeChallengeMethodsSupported:              []string{"S256"},
+		GrantTypesSupported:                        []string{"authorization_code", "refresh_token"},
+		ClaimsSupported:                            []string{"sub", "preferred_username", "email", "email_verified"},
+		AuthorizationResponseIssParameterSupported: true,
 	}
 	httputil.JSONResponse(w, http.StatusOK, openIDConfiguration)
 }

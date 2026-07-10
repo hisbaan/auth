@@ -1,4 +1,4 @@
-package sessiontokens
+package sessions
 
 import (
 	"auth/internal/repositories"

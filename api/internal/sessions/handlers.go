@@ -1,4 +1,4 @@
-package sessiontokens
+package sessions
 
 import (
 	"auth/internal/apperror"
@@ -17,54 +17,82 @@ import (
 
 type IssueSessionTokensParams struct {
 	UserID               ulid.ULID
+	ParentRefreshTokenID *[]byte
+}
+
+type SessionTokens struct {
+	AccessToken      string
+	RefreshToken     string
+	ExpiresIn        int
+	RefreshExpiresIn int
+	RefreshTokenID   ulid.ULID
+	UserID           ulid.ULID
+}
+
+type IssueRefreshTokenParams struct {
+	UserID               ulid.ULID
 	TokenSource          string
 	ClientID             *ulid.ULID
 	AuthorizationID      *ulid.ULID
 	ParentRefreshTokenID *[]byte
 }
 
-type SessionTokens struct {
-	AccessToken    string
+type IssuedRefreshToken struct {
 	RefreshToken   string
-	ExpiresIn      int
 	RefreshTokenID ulid.ULID
-	UserID         ulid.ULID
 }
 
 func (s *SessionTokenService) IssueSessionTokens(ctx context.Context, params IssueSessionTokensParams) (SessionTokens, error) {
-	if params.TokenSource != TokenSourceSelf && params.TokenSource != TokenSourceClient {
-		return SessionTokens{}, apperror.NewBadRequest("Invalid token source")
+	roles, err := s.roleRepo.GetByUserID(params.UserID)
+	if err != nil {
+		return SessionTokens{}, err
 	}
-	if params.TokenSource == TokenSourceClient && (params.ClientID == nil || params.AuthorizationID == nil) {
-		return SessionTokens{}, apperror.NewBadRequest("Client tokens require client and authorization")
-	}
-	if params.TokenSource == TokenSourceSelf && (params.ClientID != nil || params.AuthorizationID != nil) {
-		return SessionTokens{}, apperror.NewBadRequest("Self tokens cannot include client authorization")
-	}
-
-	var roleNames []string
-	if params.TokenSource == TokenSourceSelf {
-		roles, err := s.roleRepo.GetByUserID(params.UserID)
-		if err != nil {
-			return SessionTokens{}, err
-		}
-		roleNames = utils.Map(roles, func(role model.Roles) string { return role.Name })
-	}
+	roleNames := utils.Map(roles, func(role model.Roles) string { return role.Name })
 
 	accessToken, err := GenerateAccessToken(GenerateAccessTokenParams{
-		privateKey:  s.jwtSigningKey,
-		keyID:       s.jwtSigningKeyID,
-		issuer:      s.issuer,
-		userID:      params.UserID,
-		clientID:    params.ClientID,
-		tokenSource: params.TokenSource,
-		roles:       roleNames,
-		expiry:      s.accessTokenExpiry,
+		privateKey: s.jwtSigningKey,
+		keyID:      s.jwtSigningKeyID,
+		issuer:     s.issuer,
+		userID:     params.UserID,
+		roles:      roleNames,
+		expiry:     s.accessTokenExpiry,
 	})
 	if err != nil {
 		return SessionTokens{}, apperror.NewInternalServerError("Token generation error")
 	}
 	events.Log(ctx, &s.eventRepo, events.AccessTokenCreated, &params.UserID, events.AccessTokenCreatedData{})
+
+	refreshToken, err := s.IssueRefreshToken(ctx, IssueRefreshTokenParams{
+		UserID:               params.UserID,
+		TokenSource:          TokenSourceSelf,
+		ClientID:             nil,
+		AuthorizationID:      nil,
+		ParentRefreshTokenID: params.ParentRefreshTokenID,
+	})
+	if err != nil {
+		return SessionTokens{}, err
+	}
+
+	return SessionTokens{
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken.RefreshToken,
+		ExpiresIn:        int(s.accessTokenExpiry.Seconds()),
+		RefreshExpiresIn: int(s.refreshTokenExpiry.Seconds()),
+		RefreshTokenID:   refreshToken.RefreshTokenID,
+		UserID:           params.UserID,
+	}, nil
+}
+
+func (s *SessionTokenService) IssueRefreshToken(ctx context.Context, params IssueRefreshTokenParams) (IssuedRefreshToken, error) {
+	if params.TokenSource != TokenSourceSelf && params.TokenSource != TokenSourceClient {
+		return IssuedRefreshToken{}, apperror.NewBadRequest("Invalid token source")
+	}
+	if params.TokenSource == TokenSourceClient && (params.ClientID == nil || params.AuthorizationID == nil) {
+		return IssuedRefreshToken{}, apperror.NewBadRequest("Client tokens require client and authorization")
+	}
+	if params.TokenSource == TokenSourceSelf && (params.ClientID != nil || params.AuthorizationID != nil) {
+		return IssuedRefreshToken{}, apperror.NewBadRequest("Self tokens cannot include client authorization")
+	}
 
 	clientInfo := clientInfoFromContext(ctx)
 	refreshTokenID := ulid.Make()
@@ -88,7 +116,7 @@ func (s *SessionTokenService) IssueSessionTokens(ctx context.Context, params Iss
 		refreshTokenModel.AuthorizationID = &authorizationID
 	}
 	if err := s.refreshTokenRepo.Create(refreshTokenModel); err != nil {
-		return SessionTokens{}, err
+		return IssuedRefreshToken{}, err
 	}
 	events.Log(ctx, &s.eventRepo, events.RefreshTokenCreated, &params.UserID, events.RefreshTokenCreatedData{
 		RefreshTokenID: ulidutil.ToPrefixed("token", refreshTokenID),
@@ -105,22 +133,19 @@ func (s *SessionTokenService) IssueSessionTokens(ctx context.Context, params Iss
 		expiry:      s.refreshTokenExpiry,
 	})
 	if err != nil {
-		return SessionTokens{}, apperror.NewInternalServerError("Token generation error")
+		return IssuedRefreshToken{}, apperror.NewInternalServerError("Token generation error")
 	}
 
-	return SessionTokens{
-		AccessToken:    accessToken,
+	return IssuedRefreshToken{
 		RefreshToken:   refreshToken,
-		ExpiresIn:      int(s.accessTokenExpiry.Seconds()),
 		RefreshTokenID: refreshTokenID,
-		UserID:         params.UserID,
 	}, nil
 }
 
 func (s *SessionTokenService) RefreshSelfSession(ctx context.Context, refreshToken string) (SessionTokens, error) {
 	publicKey := s.jwtSigningKey.Public().(ed25519.PublicKey)
 
-	_, claims, err := jwtutil.ValidateToken(publicKey, refreshToken, &RefreshClaims{})
+	claims, err := jwtutil.ValidateToken(publicKey, s.issuer, jwtutil.RefreshTokenJWTType, refreshToken, &RefreshClaims{})
 	if err != nil {
 		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, nil, events.AuthenticationRefreshFailedData{
 			Reason: events.EventReasonInvalidToken,
@@ -133,27 +158,11 @@ func (s *SessionTokenService) RefreshSelfSession(ctx context.Context, refreshTok
 		userID = &parsedUserID
 	}
 
-	if claims.TokenType != "refresh" {
-		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, userID, events.AuthenticationRefreshFailedData{
-			Reason: events.EventReasonInvalidToken,
-		})
-		return SessionTokens{}, apperror.NewUnauthorized("Invalid token")
-	}
 	if claims.TokenSource != TokenSourceSelf {
 		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, userID, events.AuthenticationRefreshFailedData{
 			Reason: events.EventReasonInvalidToken,
 		})
 		return SessionTokens{}, apperror.NewUnauthorized("Invalid token")
-	}
-	if err := jwtutil.ValidateClaims(claims.RegisteredClaims, s.issuer); err != nil {
-		reason := events.EventReasonInvalidToken
-		if claims.ExpiresAt != nil && claims.ExpiresAt.Before(time.Now()) {
-			reason = events.EventReasonExpiredToken
-		}
-		events.Log(ctx, &s.eventRepo, events.AuthenticationRefreshFailed, userID, events.AuthenticationRefreshFailedData{
-			Reason: reason,
-		})
-		return SessionTokens{}, err
 	}
 
 	tokenID, err := ulidutil.FromPrefixed("token", claims.ID)
@@ -205,9 +214,6 @@ func (s *SessionTokenService) RefreshSelfSession(ctx context.Context, refreshTok
 
 	tokens, err := s.IssueSessionTokens(ctx, IssueSessionTokensParams{
 		UserID:               refreshTokenUserID,
-		TokenSource:          TokenSourceSelf,
-		ClientID:             nil,
-		AuthorizationID:      nil,
 		ParentRefreshTokenID: &refreshTokenModel.ID,
 	})
 	if err != nil {

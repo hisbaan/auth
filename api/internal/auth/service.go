@@ -3,10 +3,9 @@ package auth
 import (
 	"auth/internal/emails"
 	"auth/internal/repositories"
-	sessiontokens "auth/internal/session_tokens"
+	"auth/internal/sessions"
 	"crypto/ed25519"
 	"database/sql"
-	"time"
 )
 
 type AuthService struct {
@@ -16,10 +15,8 @@ type AuthService struct {
 	issuer              string
 	cookieDomain        string
 	blockedEmailDomains []string
-	accessTokenExpiry   time.Duration
-	refreshTokenExpiry  time.Duration
 	emailService        *emails.EmailService
-	sessionTokenService sessiontokens.SessionTokenService
+	sessionTokenService sessions.SessionTokenService
 
 	userRepo                   repositories.UserRepository
 	roleRepo                   repositories.RoleRepository
@@ -29,7 +26,7 @@ type AuthService struct {
 	eventRepo                  repositories.EventRepository
 }
 
-func NewAuthService(db *sql.DB, signingKey ed25519.PrivateKey, signingKeyID string, issuer string, emailService *emails.EmailService, cookieDomain string, blockedEmailDomains []string) *AuthService {
+func NewAuthService(db *sql.DB, signingKey ed25519.PrivateKey, signingKeyID string, issuer string, emailService *emails.EmailService, cookieDomain string, blockedEmailDomains []string, sessionTokenService sessions.SessionTokenService) *AuthService {
 	return &AuthService{
 		db:                         db,
 		jwtSigningKey:              signingKey,
@@ -37,10 +34,8 @@ func NewAuthService(db *sql.DB, signingKey ed25519.PrivateKey, signingKeyID stri
 		issuer:                     issuer,
 		cookieDomain:               cookieDomain,
 		blockedEmailDomains:        blockedEmailDomains,
-		accessTokenExpiry:          time.Duration(15) * time.Minute,
-		refreshTokenExpiry:         time.Duration(168) * time.Hour, // 7 days
 		emailService:               emailService,
-		sessionTokenService:        sessiontokens.NewSessionTokenService(signingKey, signingKeyID, issuer, time.Duration(15)*time.Minute, time.Duration(168)*time.Hour, repositories.NewRoleRepository(db), repositories.NewRefreshTokenRepository(db), repositories.NewEventRepository(db)),
+		sessionTokenService:        sessionTokenService,
 		userRepo:                   repositories.NewUserRepository(db),
 		roleRepo:                   repositories.NewRoleRepository(db),
 		refreshTokenRepo:           repositories.NewRefreshTokenRepository(db),
