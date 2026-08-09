@@ -70,28 +70,49 @@ func (s *AuthService) CreateUser(ctx context.Context, params CreateUserParams) e
 
 	userID := ulidutil.MustFromBytes(user.ID)
 	events.Log(ctx, &s.eventRepo, events.UserCreated, &userID, events.UserCreatedData{})
-	s.emailVerificationTokenRepo.RevokeByUserID(userID)
 
-	token, hashedToken := tokenutil.Generate()
-	emailVerificationTokenModel := model.EmailVerificationTokens{
-		ID:        ulid.Make().Bytes(),
-		UserID:    user.ID,
-		TokenHash: hashedToken,
-		Email:     email,
-		ReturnTo:  returnTo,
-		ExpiresAt: time.Now().Add(time.Duration(24) * time.Hour),
-		RevokedAt: nil,
-		CreatedAt: time.Now(),
-	}
-	s.emailVerificationTokenRepo.Create(emailVerificationTokenModel)
-	events.Log(ctx, &s.eventRepo, events.UserEmailVerificationCreated, &userID, events.UserEmailVerificationCreatedData{
-		Email: email,
+	s.issueEmailVerification(ctx, issueEmailVerificationParams{
+		UserID:   userID,
+		Email:    email,
+		Username: username,
+		ReturnTo: returnTo,
 	})
-	urlEncodedToken := tokenutil.URLEncode(token)
-
-	go s.emailService.SendVerifyEmail(email, username, urlEncodedToken)
 
 	return nil
+}
+
+type ResendVerificationEmailParams struct {
+	Email    string `json:"email"`
+	ReturnTo string `json:"return_to"`
+}
+
+func (s *AuthService) ResendVerificationEmail(ctx context.Context, params ResendVerificationEmailParams) error {
+	email, err := stringutil.ValidateUserEmail(params.Email, s.emailService.SenderAddress(), s.blockedEmailDomains)
+	if err != nil {
+		return err
+	}
+	returnTo, err := s.validateEmailVerificationReturnTo(params.ReturnTo)
+	if err != nil {
+		return err
+	}
+
+	user, err := s.userRepo.GetByEmail(email)
+	if err != nil {
+		return err
+	}
+	if user == nil || user.EmailVerified {
+		return nil
+	}
+
+	userID := ulidutil.MustFromBytes(user.ID)
+	_, err = s.issueEmailVerification(ctx, issueEmailVerificationParams{
+		UserID:   userID,
+		Email:    user.Email,
+		Username: user.Username,
+		ReturnTo: returnTo,
+	})
+
+	return err
 }
 
 type LoginParams struct {
@@ -116,6 +137,13 @@ func sessionTokenResponse(tokens sessions.SessionTokens) SessionTokenResponse {
 	}
 }
 
+const LoginErrorEmailNotVerified = "email_not_verified"
+
+type LoginEmailNotVerifiedResponse struct {
+	Error                 string `json:"error"`
+	VerificationEmailSent bool   `json:"verification_email_sent"`
+}
+
 func (s *AuthService) Login(ctx context.Context, params LoginParams) (sessions.SessionTokens, error) {
 	email, err := stringutil.NormalizeEmail(params.Email)
 	if err != nil || params.Password == "" || len(params.Password) > stringutil.MaxPasswordLength {
@@ -134,24 +162,86 @@ func (s *AuthService) Login(ctx context.Context, params LoginParams) (sessions.S
 		return sessions.SessionTokens{}, apperror.NewUnauthorized("Invalid credentials")
 	}
 
+	userID := ulidutil.MustFromBytes(user.ID)
+
 	match := ComparePasswordAndHash(params.Password, user.PasswordHash)
 	if !match {
-		userID := ulidutil.MustFromBytes(user.ID)
 		events.Log(ctx, &s.eventRepo, events.AuthenticationPasswordFailed, &userID, events.AuthenticationPasswordFailedData{
 			Email: email,
 		})
 		return sessions.SessionTokens{}, apperror.NewUnauthorized("Invalid credentials")
 	}
 	if !user.EmailVerified {
-		return sessions.SessionTokens{}, apperror.NewForbidden("Email verification required")
+		sent, _ := s.issueEmailVerification(ctx, issueEmailVerificationParams{
+			UserID:   userID,
+			Email:    user.Email,
+			Username: user.Username,
+			Cooldown: s.emailVerificationResendCooldown,
+		})
+		return sessions.SessionTokens{}, apperror.NewForbiddenWithBody("Email verification required", LoginEmailNotVerifiedResponse{
+			Error:                 LoginErrorEmailNotVerified,
+			VerificationEmailSent: sent,
+		})
 	}
 
-	userID := ulidutil.MustFromBytes(user.ID)
 	events.Log(ctx, &s.eventRepo, events.AuthenticationPasswordSucceeded, &userID, events.AuthenticationPasswordSucceededData{})
 	return s.sessionTokenService.IssueSessionTokens(ctx, sessions.IssueSessionTokensParams{
 		UserID:               userID,
 		ParentRefreshTokenID: nil,
 	})
+}
+
+type issueEmailVerificationParams struct {
+	UserID   ulid.ULID
+	Email    string
+	Username string
+	ReturnTo *string
+	Cooldown time.Duration
+}
+
+// Revoke the user's outstanding verification tokens, issue a fresh one, and send the
+// verification email.
+func (s *AuthService) issueEmailVerification(ctx context.Context, params issueEmailVerificationParams) (bool, error) {
+	returnTo := params.ReturnTo
+
+	existing, err := s.emailVerificationTokenRepo.GetLatestActiveByUserID(params.UserID)
+	if err != nil {
+		return false, err
+	}
+	if existing != nil {
+		if params.Cooldown > 0 && time.Since(existing.CreatedAt) < params.Cooldown {
+			return false, nil
+		}
+		if returnTo == nil {
+			returnTo = existing.ReturnTo
+		}
+	}
+
+	if err := s.emailVerificationTokenRepo.RevokeByUserID(params.UserID); err != nil {
+		return false, err
+	}
+
+	token, hashedToken := tokenutil.Generate()
+	emailVerificationTokenModel := model.EmailVerificationTokens{
+		ID:        ulid.Make().Bytes(),
+		UserID:    params.UserID.Bytes(),
+		TokenHash: hashedToken,
+		Email:     params.Email,
+		ReturnTo:  returnTo,
+		ExpiresAt: time.Now().Add(s.emailVerificationExpiry),
+		RevokedAt: nil,
+		CreatedAt: time.Now(),
+	}
+	if err := s.emailVerificationTokenRepo.Create(emailVerificationTokenModel); err != nil {
+		return false, err
+	}
+	events.Log(ctx, &s.eventRepo, events.UserEmailVerificationCreated, &params.UserID, events.UserEmailVerificationCreatedData{
+		Email: params.Email,
+	})
+
+	go s.emailService.SendVerifyEmail(params.Email, params.Username, tokenutil.URLEncode(token))
+
+	return true, nil
 }
 
 func (s *AuthService) validateEmailVerificationReturnTo(value string) (*string, error) {

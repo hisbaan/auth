@@ -2,8 +2,10 @@ import { headers as nextHeaders } from "next/headers";
 
 import { API_BASE_URL } from "@/lib/config";
 import type {
+	ApiErrorPayload,
 	Client,
 	AuthorizeClientInfo,
+	EmailNotVerifiedPayload,
 	ListEventsResponse,
 	ListClientAuthorizationsResponse,
 	ListClientsResponse,
@@ -48,6 +50,7 @@ export type SDKResult<T> = {
   status: number;
   data?: T;
   error?: string;
+  errorData?: ApiErrorPayload;
   headers: Headers;
 };
 
@@ -86,11 +89,13 @@ export async function sdkRequest<T>(path: string, options: SDKRequestOptions = {
   const isJson = contentType.includes("application/json");
 
   if (!response.ok) {
-    const error = isJson ? JSON.stringify(await response.json()) : (await response.text()) || "Request failed";
+    const errorData = isJson ? ((await response.json()) as ApiErrorPayload) : undefined;
+    const error = errorData ? JSON.stringify(errorData) : (await response.text()) || "Request failed";
     return {
       ok: false,
       status: response.status,
       error,
+      errorData,
       headers: response.headers,
     };
   }
@@ -111,10 +116,23 @@ export async function loginWithPassword(email: string, password: string) {
   });
 }
 
+export function isEmailNotVerified(
+  payload: ApiErrorPayload | undefined,
+): payload is EmailNotVerifiedPayload {
+  return payload?.error === "email_not_verified";
+}
+
 export async function registerUser(username: string, email: string, password: string, returnTo?: string) {
   return sdkRequest<void>("/auth/register", {
     method: "POST",
     body: { username, email, password, return_to: returnTo },
+  });
+}
+
+export async function resendVerificationEmail(email: string, returnTo?: string) {
+  return sdkRequest<void>("/auth/resend-verification", {
+    method: "POST",
+    body: { email, return_to: returnTo },
   });
 }
 

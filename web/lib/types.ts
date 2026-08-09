@@ -23,6 +23,16 @@ export type VerifyEmailResponse = {
   continue_url?: string;
 };
 
+export type ApiErrorPayload = {
+  error?: string;
+  [key: string]: unknown;
+};
+
+export type EmailNotVerifiedPayload = {
+  error: "email_not_verified";
+  verification_email_sent: boolean;
+};
+
 export type ListUsersResponse = {
   users: User[];
   next_cursor?: string;

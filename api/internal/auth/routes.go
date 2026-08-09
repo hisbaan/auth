@@ -46,6 +46,7 @@ func Router(s *AuthService) http.Handler {
 	//	@Success		200		{object}	SessionTokenResponse
 	//	@Failure		400
 	//	@Failure		401
+	//	@Failure		403		{object}	LoginEmailNotVerifiedResponse
 	//	@Failure		500
 	//	@Router			/auth/login [post]
 	r.With(middleware.RateLimit(10, time.Minute)).Post("/login", func(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +105,7 @@ func Router(s *AuthService) http.Handler {
 	//	@Summary		Logout user
 	//	@Description	Clears authentication cookies
 	//	@Tags			auth
-	//	@Success		200	{object} VerifyEmailResponse
+	//	@Success		204
 	//	@Router			/auth/logout [post]
 	r.Post("/logout", func(w http.ResponseWriter, r *http.Request) {
 		token := ""
@@ -159,6 +160,29 @@ func Router(s *AuthService) http.Handler {
 
 		err := s.PasswordReset(r.Context(), body)
 		if err != nil {
+			httputil.HandleError(w, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	//	@Summary		Resend verification email
+	//	@Description	Sends a new email verification link. Succeeds without sending when the address is unknown or already verified.
+	//	@Tags			auth
+	//	@Accept			json
+	//	@Param			request	body	ResendVerificationEmailParams	true	"Email address"
+	//	@Success		204
+	//	@Failure		400
+	//	@Failure		500
+	//	@Router			/auth/resend-verification [post]
+	r.With(middleware.RateLimit(5, time.Minute)).Post("/resend-verification", func(w http.ResponseWriter, r *http.Request) {
+		var body ResendVerificationEmailParams
+		if err := httputil.ParseBody(w, r, &body); err != nil {
+			return
+		}
+
+		if err := s.ResendVerificationEmail(r.Context(), body); err != nil {
 			httputil.HandleError(w, err)
 			return
 		}

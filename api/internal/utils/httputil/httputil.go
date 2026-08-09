@@ -52,6 +52,12 @@ func LimitBody(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleError(w http.ResponseWriter, err error) {
+	var berr apperror.BodyError
+	if errors.As(err, &berr) && berr.ErrorBody() != nil {
+		JSONResponse(w, berr.StatusCode(), berr.ErrorBody())
+		return
+	}
+
 	serr, ok := err.(apperror.HTTPError)
 	if ok {
 		http.Error(w, serr.Error(), serr.StatusCode())

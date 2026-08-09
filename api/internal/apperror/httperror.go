@@ -13,10 +13,18 @@ type HTTPError interface {
 	StatusCode() int
 }
 
+// BodyError is the interface for errors that respond with a JSON body instead of a message,
+// for clients that need to branch on the failure rather than display it
+type BodyError interface {
+	HTTPError
+	ErrorBody() any
+}
+
 // Error is the base error type that implements HTTPError
 type Error struct {
 	Status  int
 	Message string
+	Body    any
 }
 
 func (e *Error) Error() string {
@@ -25,6 +33,10 @@ func (e *Error) Error() string {
 
 func (e *Error) StatusCode() int {
 	return e.Status
+}
+
+func (e *Error) ErrorBody() any {
+	return e.Body
 }
 
 // New creates a new HTTPError with the given status and message
@@ -58,6 +70,16 @@ func NewForbidden(msg string) HTTPError {
 		msg = fmt.Sprintf("Forbidden: %s", msg)
 	}
 	return &Error{Status: http.StatusForbidden, Message: msg}
+}
+
+// Forbidden (403) with a JSON body
+func NewForbiddenWithBody(msg string, body any) HTTPError {
+	if msg == "" {
+		msg = "Forbidden"
+	} else {
+		msg = fmt.Sprintf("Forbidden: %s", msg)
+	}
+	return &Error{Status: http.StatusForbidden, Message: msg, Body: body}
 }
 
 // Not Found (404)

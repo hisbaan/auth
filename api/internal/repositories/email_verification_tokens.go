@@ -48,6 +48,32 @@ func (r *EmailVerificationTokenRepository) GetByHash(hash []byte) (*model.EmailV
 	return &tokens[0], nil
 }
 
+func (r *EmailVerificationTokenRepository) GetLatestActiveByUserID(userID ulid.ULID) (*model.EmailVerificationTokens, error) {
+	query := EmailVerificationTokens.SELECT(EmailVerificationTokens.AllColumns).
+		WHERE(
+			AND(
+				EmailVerificationTokens.UserID.EQ(Bytea(userID.Bytes())),
+				EmailVerificationTokens.RevokedAt.IS_NULL(),
+				EmailVerificationTokens.ExpiresAt.GT(TimestampzT(time.Now())),
+			),
+		).
+		ORDER_BY(EmailVerificationTokens.CreatedAt.DESC()).
+		LIMIT(1)
+
+	var tokens []model.EmailVerificationTokens
+	err := query.Query(r.db, &tokens)
+	if err != nil {
+		log.Printf("[ERROR] GetLatestActiveByUserID query failed: %v", err)
+		return nil, apperror.NewInternalServerError("Database query error")
+	}
+
+	if len(tokens) == 0 {
+		return nil, nil
+	}
+
+	return &tokens[0], nil
+}
+
 func (r *EmailVerificationTokenRepository) ActiveEmailVerificationWillConflict(userID ulid.ULID, email string) (bool, error) {
 	query := EmailVerificationTokens.SELECT(EmailVerificationTokens.ID).
 		WHERE(

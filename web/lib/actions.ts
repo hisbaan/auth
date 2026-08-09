@@ -3,9 +3,13 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { buildAuthorizeSuccessUrl, isAllowedCallbackUrl } from "@/lib/callback";
+import {
+	buildAuthorizeSuccessUrl,
+	emailVerificationReturnTo,
+	isAllowedCallbackUrl,
+} from "@/lib/callback";
 import { API_BASE_URL, COOKIE_DOMAIN, COOKIE_SECURE } from "@/lib/config";
-import { parseEncodedRequest, withEncodedRequest } from "@/lib/http";
+import { parseEncodedRequest, withEncodedRequest, withQuery } from "@/lib/http";
 import {
 	addUserRole,
 	createCurrentUserClient,
@@ -14,6 +18,7 @@ import {
 	deleteCurrentUser,
 	deleteRole,
 	grantAuthorizeConsent,
+	isEmailNotVerified,
 	listAdminUserEvents,
 	listAdminUserRefreshTokens,
 	listCurrentUserClients,
@@ -21,6 +26,7 @@ import {
 	logout,
 	revokeCurrentUserAuthorization,
 	registerUser,
+	resendVerificationEmail,
 	revokeCurrentUserClient,
 	removeUserRole,
 	resetPassword,
@@ -66,9 +72,16 @@ export async function loginAction(formData: FormData) {
 
   const result = await loginWithPassword(email, password);
   if (!result.ok || !result.data) {
-    if (result.status === 403) {
-      await setFlash("error", "Email verification required. Check your email to continue.");
-      redirect(loginRedirect);
+    if (result.status === 403 && isEmailNotVerified(result.errorData)) {
+      redirect(
+        withQuery("/verify-email/sent", {
+          email,
+          next: sanitizeRedirectPathOrUrl(next, "", [new URL(API_BASE_URL).origin]),
+          callback_url: callbackUrl,
+          state,
+          sent: result.errorData.verification_email_sent ? "1" : "0",
+        }),
+      );
     }
     await setFlash("error", "Invalid credentials");
     redirect(loginRedirect);
@@ -93,14 +106,7 @@ export async function registerAction(formData: FormData) {
   const next = String(formData.get("next") ?? "").trim();
   const apiOrigin = new URL(API_BASE_URL).origin;
   const safeNext = sanitizeRedirectPathOrUrl(next, "", [apiOrigin]);
-  const returnTo = (() => {
-    try {
-      const url = new URL(safeNext);
-      return url.origin === apiOrigin && url.pathname === "/authorize" ? url.toString() : "";
-    } catch {
-      return "";
-    }
-  })();
+  const returnTo = emailVerificationReturnTo(safeNext);
   const registerRedirect = safeNext ? `/register?next=${encodeURIComponent(safeNext)}` : "/register";
 
   if (!username || !email || !password) {
@@ -114,8 +120,29 @@ export async function registerAction(formData: FormData) {
     redirect(registerRedirect);
   }
 
-  await setFlash("success", "Account created. Check your email to verify.");
-  redirect(registerRedirect);
+  redirect(withQuery("/verify-email/sent", { email, next: safeNext, sent: "1" }));
+}
+
+export async function resendVerificationAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim();
+  const next = String(formData.get("next") ?? "").trim();
+  const safeNext = sanitizeRedirectPathOrUrl(next, "", [new URL(API_BASE_URL).origin]);
+  const sentRedirect = withQuery("/verify-email/sent", { email, next: safeNext });
+
+  if (!email) {
+    await setFlash("error", "Email is required");
+    redirect(sentRedirect);
+  }
+
+  const returnTo = emailVerificationReturnTo(safeNext);
+  const result = await resendVerificationEmail(email, returnTo || undefined);
+  if (!result.ok) {
+    await setFlash("error", "Unable to send verification email");
+    redirect(sentRedirect);
+  }
+
+  await setFlash("success", "Verification email sent");
+  redirect(withQuery("/verify-email/sent", { email, next: safeNext, sent: "1" }));
 }
 
 export async function forgotPasswordAction(formData: FormData) {
