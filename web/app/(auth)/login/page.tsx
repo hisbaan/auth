@@ -104,7 +104,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
           <div className="flex items-center justify-between text-sm">
             <Link
-              href="/forgot-password"
+              href={withQuery("/forgot-password", { next: params.next })}
               className="text-muted-foreground hover:text-foreground"
             >
               Forgot password?

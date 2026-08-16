@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
-import { SiteHeader } from "@/components/layout/site-header";
 import { FlashToaster } from "@/components/ui/flash-toaster";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -32,7 +31,6 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${spaceGrotesk.variable} ${ibmPlexMono.variable} antialiased dark`}>
         <TooltipProvider>
-          <SiteHeader />
           {children}
           <Toaster />
           <Suspense fallback={null}>

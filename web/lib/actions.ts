@@ -147,19 +147,22 @@ export async function resendVerificationAction(formData: FormData) {
 
 export async function forgotPasswordAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
+  const next = String(formData.get("next") ?? "").trim();
+  const selfHref = withQuery("/forgot-password", { next });
+
   if (!email) {
     await setFlash("error", "Email is required");
-    redirect("/forgot-password");
+    redirect(selfHref);
   }
 
   const result = await sendForgotPassword(email);
   if (!result.ok) {
     await setFlash("error", "Unable to send reset email");
-    redirect("/forgot-password");
+    redirect(selfHref);
   }
 
   await setFlash("success", "If this email exists, a reset link was sent.");
-  redirect("/forgot-password");
+  redirect(selfHref);
 }
 
 export async function resetPasswordAction(formData: FormData) {
